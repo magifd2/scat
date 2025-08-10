@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 
 	"github.com/magifd2/scat/internal/config"
 	"github.com/magifd2/scat/internal/provider"
@@ -22,8 +23,9 @@ const (
 
 // Provider implements the provider.Interface for Slack.
 type Provider struct {
-	Profile config.Profile
-	NoOp    bool
+	Profile        config.Profile
+	NoOp           bool
+	channelIDCache map[string]string // Cache for channel name to ID mapping
 }
 
 // NewProvider creates a new Slack Provider.
@@ -40,8 +42,10 @@ func (p *Provider) Capabilities() provider.Capabilities {
 	}
 }
 
+// --- API Payload and Response Structs ---
+
 type messagePayload struct {
-	Channel   string `json:"channel"`
+	Channel   string `json:"channel"` // This must be a Channel ID
 	Text      string `json:"text"`
 	Username  string `json:"username,omitempty"`
 	IconEmoji string `json:"icon_emoji,omitempty"`
@@ -50,15 +54,8 @@ type messagePayload struct {
 type apiResponse struct {
 	Ok               bool   `json:"ok"`
 	Error            string `json:"error,omitempty"`
-	TS               string `json:"ts,omitempty"`
-	File             struct {
-		Shares struct {
-			Public map[string][]struct {
-				TS string `json:"ts"`
-			} `json:"public"`
-		} `json:"shares"`
-	} `json:"file,omitempty"`
 	Channels         []struct {
+		ID   string `json:"id"`
 		Name string `json:"name"`
 	} `json:"channels"`
 	ResponseMetadata struct {
@@ -83,13 +80,20 @@ type completeUploadExternalPayload struct {
 	InitialComment string     `json:"initial_comment,omitempty"`
 }
 
+// --- Provider Methods ---
+
 func (p *Provider) PostMessage(text, overrideUsername, iconEmoji string) error {
+	channelID, err := p.getChannelID(p.Profile.Channel)
+	if err != nil {
+		return err
+	}
+
 	username := p.Profile.Username
 	if overrideUsername != "" {
 		username = overrideUsername
 	}
 	payload := messagePayload{
-		Channel:   p.Profile.Channel,
+		Channel:   channelID,
 		Text:      text,
 		Username:  username,
 		IconEmoji: iconEmoji,
@@ -105,10 +109,10 @@ func (p *Provider) PostMessage(text, overrideUsername, iconEmoji string) error {
 
 func (p *Provider) PostFile(filePath, filename, filetype, comment, overrideUsername, iconEmoji string) error {
 	if p.NoOp {
-		fmt.Printf("---\n")
+		fmt.Printf("--- NOOP: Dry run ---\n")
 		fmt.Printf("Provider: slack\n")
 		fmt.Printf("Action: Upload file %s\n", filePath)
-		fmt.Printf("-----\n")
+		fmt.Printf("---------------------\n")
 		return nil
 	}
 
@@ -156,13 +160,18 @@ func (p *Provider) PostFile(filePath, filename, filetype, comment, overrideUsern
 	defer uploadResp.Body.Close()
 	if uploadResp.StatusCode != 200 {
 		body, _ := io.ReadAll(uploadResp.Body)
-		return fmt.Errorf("upload to url failed with status %d: %s", uploadResp.StatusCode, string(body))
+		return fmt.Errorf("upload to url failed with status %d: %s", uploadResp.StatusCode, string(body)) 
 	}
 
 	// Step 3: Complete the upload
+	channelID, err := p.getChannelID(p.Profile.Channel)
+	if err != nil {
+		return err
+	}
+
 	completePayload := completeUploadExternalPayload{
 		Files:          []fileInfo{{ID: getURLResp.FileID}},
-		ChannelID:      p.Profile.Channel,
+		ChannelID:      channelID,
 		InitialComment: comment,
 	}
 	completePayloadBytes, err := json.Marshal(completePayload)
@@ -179,27 +188,56 @@ func (p *Provider) PostFile(filePath, filename, filetype, comment, overrideUsern
 }
 
 func (p *Provider) ListChannels() ([]string, error) {
-	var allChannels []string
+	if p.channelIDCache == nil {
+		if err := p.populateChannelCache(); err != nil {
+			return nil, err
+		}
+	}
+	var channelNames []string
+	for name := range p.channelIDCache {
+		channelNames = append(channelNames, "#"+name)
+	}
+	return channelNames, nil
+}
+
+// --- Helper Methods ---
+
+func (p *Provider) getChannelID(name string) (string, error) {
+	if p.channelIDCache == nil {
+		if err := p.populateChannelCache(); err != nil {
+			return "", err
+		}
+	}
+	// Slack channel names can be with or without a leading #
+	name = strings.TrimPrefix(name, "#")
+	if id, ok := p.channelIDCache[name]; ok {
+		return id, nil
+	}
+	return "", fmt.Errorf("channel '%s' not found", name)
+}
+
+func (p *Provider) populateChannelCache() error {
+	p.channelIDCache = make(map[string]string)
 	cursor := ""
 
 	for {
 		url := fmt.Sprintf("%s?cursor=%s&types=public_channel,private_channel&limit=200", conversationsListURL, cursor)
 		body, err := p.sendRequest("GET", url, nil, "")
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		var listResp apiResponse
 		if err := json.Unmarshal(body, &listResp); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal conversations.list response: %w", err)
+			return fmt.Errorf("failed to unmarshal conversations.list response: %w", err)
 		}
 
 		if !listResp.Ok {
-			return nil, fmt.Errorf("slack API error on conversations.list: %s", listResp.Error)
+			return fmt.Errorf("slack API error on conversations.list: %s", listResp.Error)
 		}
 
 		for _, ch := range listResp.Channels {
-			allChannels = append(allChannels, "#"+ch.Name)
+			p.channelIDCache[ch.Name] = ch.ID
 		}
 
 		cursor = listResp.ResponseMetadata.NextCursor
@@ -207,7 +245,7 @@ func (p *Provider) ListChannels() ([]string, error) {
 			break
 		}
 	}
-	return allChannels, nil
+	return nil
 }
 
 func (p *Provider) sendRequest(method, url string, body io.Reader, contentType string) ([]byte, error) {
@@ -235,6 +273,14 @@ func (p *Provider) sendRequest(method, url string, body io.Reader, contentType s
 
 	if resp.StatusCode >= 400 {
 		return nil, fmt.Errorf("request failed with status code %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	// Check for `ok: false` in the response body itself.
+	var baseResp apiResponse
+	if err := json.Unmarshal(bodyBytes, &baseResp); err == nil {
+		if !baseResp.Ok {
+			return nil, fmt.Errorf("slack API error: %s", baseResp.Error)
+		}
 	}
 
 	return bodyBytes, nil
