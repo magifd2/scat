@@ -11,7 +11,7 @@ import (
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all available profiles",
-	Long:  `Lists all saved profiles and indicates which one is currently active.`, 
+	Long:  `Lists all saved profiles and indicates which one is currently active.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		cfg, err := config.Load()
 		if err != nil {
@@ -19,7 +19,7 @@ var listCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		fmt.Println("Available profiles:")
+		fmt.Fprintln(os.Stderr, "Available profiles:")
 		for name, p := range cfg.Profiles {
 			activeMarker := " "
 			if name == cfg.CurrentProfile {

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"syscall"
 
 	"github.com/magifd2/scat/internal/config"
@@ -45,12 +46,12 @@ var addCmd = &cobra.Command{
 		}
 
 		// Prompt for token securely
-		fmt.Print("Enter Token (will not be displayed): ")
+		fmt.Fprint(os.Stderr, "Enter Token (will not be displayed): ")
 		tokenBytes, err := term.ReadPassword(int(syscall.Stdin))
 		if err != nil {
 			return fmt.Errorf("failed to read token: %w", err)
 		}
-		fmt.Println()
+		fmt.Fprintln(os.Stderr)
 		newProfile.Token = string(tokenBytes)
 
 		cfg.Profiles[profileName] = newProfile
@@ -59,7 +60,7 @@ var addCmd = &cobra.Command{
 			return fmt.Errorf("Error saving config: %w", err)
 		}
 
-		fmt.Printf("Profile '%s' added.\n", profileName)
+		fmt.Fprintf(os.Stderr, "Profile '%s' added.\n", profileName)
 		return nil
 	},
 }

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"syscall"
@@ -35,13 +36,13 @@ For the 'token' key, run 'scat profile set token' and you will be prompted to en
 			if len(args) != 1 {
 				return fmt.Errorf("'set token' does not accept a value argument. Run it alone to be prompted.")
 			}
-			fmt.Print("Enter new Token (will not be displayed): ")
+			fmt.Fprint(os.Stderr, "Enter new Token (will not be displayed): ")
 		
-tokenBytes, err := term.ReadPassword(int(syscall.Stdin))
+			tokenBytes, err := term.ReadPassword(int(syscall.Stdin))
 			if err != nil {
 				return fmt.Errorf("failed to read token: %w", err)
 			}
-			fmt.Println()
+			fmt.Fprintln(os.Stderr)
 			value = string(tokenBytes)
 		} else {
 			if len(args) != 2 {
@@ -85,7 +86,7 @@ tokenBytes, err := term.ReadPassword(int(syscall.Stdin))
 		if err := cfg.Save(); err != nil {
 			return fmt.Errorf("saving config: %w", err)
 		}
-		fmt.Printf("Set %s in profile %s\n", key, cfg.CurrentProfile)
+		fmt.Fprintf(os.Stderr, "Set %s in profile %s\n", key, cfg.CurrentProfile)
 		return nil
 	},
 }

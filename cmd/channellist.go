@@ -20,8 +20,9 @@ var channelListCmd = &cobra.Command{
 
 		// Create app context
 		appCtx := appcontext.Context{
-			Debug: debug,
-			NoOp:  false, // Noop is not relevant for listing
+			Debug:  debug,
+			NoOp:   false, // Noop is not relevant for listing
+			Silent: false, // Silent is not relevant for listing, always show output unless --json
 		}
 
 		cfg, err := config.Load()
@@ -53,7 +54,7 @@ var channelListCmd = &cobra.Command{
 			if jsonOutput {
 				results[profileName] = channels
 			} else {
-				fmt.Printf("Channels for profile: %s\n", profileName)
+				fmt.Fprintf(os.Stderr, "Channels for profile: %s\n", profileName)
 				for _, ch := range channels {
 					fmt.Printf("  - %s\n", ch)
 				}

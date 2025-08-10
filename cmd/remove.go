@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/magifd2/scat/internal/config"
 	"github.com/spf13/cobra"
@@ -37,7 +38,7 @@ var removeCmd = &cobra.Command{
 		if err := cfg.Save(); err != nil {
 			return fmt.Errorf("saving config: %w", err)
 		}
-		fmt.Printf("Profile '%s' removed.\n", profileName)
+		fmt.Fprintf(os.Stderr, "Profile '%s' removed.\n", profileName)
 		return nil
 	},
 }

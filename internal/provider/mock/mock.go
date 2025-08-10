@@ -31,26 +31,33 @@ func (p *Provider) Capabilities() provider.Capabilities {
 
 // PostMessage prints a mock message.
 func (p *Provider) PostMessage(text, overrideUsername, iconEmoji string) error {
+	if !p.Context.Silent {
+		fmt.Fprintln(os.Stderr, "--- [MOCK] PostMessage called ---")
+		fmt.Fprintf(os.Stderr, "Text: %s\n", text)
+	}
 	if p.Context.Debug {
 		fmt.Fprintf(os.Stderr, "[DEBUG] Mock PostMessage: Text=\"%s\", Username=\"%s\", IconEmoji=\"%s\"\n", text, overrideUsername, iconEmoji)
 	}
-	fmt.Println("---" + " [MOCK] PostMessage called ---")
-	fmt.Printf("Text: %s\n", text)
 	return nil
 }
 
 // PostFile prints a mock message.
 func (p *Provider) PostFile(filePath, filename, filetype, comment, overrideUsername, iconEmoji string) error {
+	if !p.Context.Silent {
+		fmt.Fprintln(os.Stderr, "--- [MOCK] PostFile called ---")
+		fmt.Fprintf(os.Stderr, "File: %s\n", filePath)
+	}
 	if p.Context.Debug {
 		fmt.Fprintf(os.Stderr, "[DEBUG] Mock PostFile: FilePath=\"%s\", Filename=\"%s\"\n", filePath, filename)
 	}
-	fmt.Println("---" + " [MOCK] PostFile called ---")
-	fmt.Printf("File: %s\n", filePath)
 	return nil
 }
 
 // ListChannels returns an error as it's not supported.
 func (p *Provider) ListChannels() ([]string, error) {
+	if !p.Context.Silent {
+		fmt.Fprintln(os.Stderr, "--- [MOCK] ListChannels called ---")
+	}
 	if p.Context.Debug {
 		fmt.Fprintln(os.Stderr, "[DEBUG] Mock ListChannels called")
 	}

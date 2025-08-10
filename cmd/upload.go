@@ -36,6 +36,7 @@ var uploadCmd = &cobra.Command{
 		iconEmoji, _ := cmd.Flags().GetString("iconemoji")
 		channel, _ := cmd.Flags().GetString("channel")
 		noop, _ := cmd.Flags().GetBool("noop")
+		silent, _ := cmd.Flags().GetBool("silent") // Get silent flag
 		filePath, _ := cmd.Flags().GetString("file")
 
 		// Get debug flag from persistent flags
@@ -43,8 +44,9 @@ var uploadCmd = &cobra.Command{
 
 		// Create app context
 		appCtx := appcontext.Context{
-			Debug: debug,
-			NoOp:  noop,
+			Debug:  debug,
+			NoOp:   noop,
+			Silent: silent,
 		}
 
 		// Override channel from profile if flag is set
@@ -104,7 +106,9 @@ var uploadCmd = &cobra.Command{
 		if err := prov.PostFile(filePath, filename, filetype, comment, username, iconEmoji); err != nil {
 			return fmt.Errorf("failed to post file: %w", err)
 		}
-		fmt.Printf("File '%s' uploaded successfully to profile '%s'.\n", filename, profileName)
+		if !appCtx.Silent {
+			fmt.Fprintf(os.Stderr, "File '%s' uploaded successfully to profile '%s'.\n", filename, profileName)
+		}
 
 		return nil
 	},
@@ -124,4 +128,5 @@ func init() {
 	uploadCmd.Flags().StringP("username", "u", "", "Override the username for this upload")
 	uploadCmd.Flags().Bool("noop", false, "Dry run, do not actually upload")
 	uploadCmd.Flags().StringP("iconemoji", "i", "", "Icon emoji to use for the post (slack provider only)")
+	uploadCmd.Flags().Bool("silent", false, "Suppress informational messages")
 }

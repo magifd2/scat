@@ -17,7 +17,7 @@ import (
 var postCmd = &cobra.Command{
 	Use:   "post [message text]",
 	Short: "Post a text message from an argument, file, or stdin",
-	Long:  `Posts a text message. The message content is sourced in the following order of precedence: 1. Command-line argument. 2. --from-file flag. 3. Standard input.`,
+	Long:  `Posts a text message. The message content is sourced in the following order of precedence: 1. Command-line argument. 2. --from-file flag. 3. Standard input.`, 
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Load config
 		cfg, err := config.Load()
@@ -41,6 +41,7 @@ var postCmd = &cobra.Command{
 		channel, _ := cmd.Flags().GetString("channel")
 		tee, _ := cmd.Flags().GetBool("tee")
 		noop, _ := cmd.Flags().GetBool("noop")
+		silent, _ := cmd.Flags().GetBool("silent") // Get silent flag
 		fromFile, _ := cmd.Flags().GetString("from-file")
 
 		// Get debug flag from persistent flags
@@ -48,8 +49,9 @@ var postCmd = &cobra.Command{
 
 		// Create app context
 		appCtx := appcontext.Context{
-			Debug: debug,
-			NoOp:  noop,
+			Debug:  debug,
+			NoOp:   noop,
+			Silent: silent,
 		}
 
 		// Override channel from profile if flag is set
@@ -70,7 +72,7 @@ var postCmd = &cobra.Command{
 			if len(args) > 0 || fromFile != "" {
 				return fmt.Errorf("cannot use arguments or --from-file with --stream flag")
 			}
-			return handleStream(prov, profileName, username, iconEmoji, tee)
+			return handleStream(prov, profileName, username, iconEmoji, tee, appCtx.Silent)
 		}
 
 		// Determine message content from args, file, or stdin
@@ -112,14 +114,18 @@ var postCmd = &cobra.Command{
 		if err := prov.PostMessage(content, username, iconEmoji); err != nil {
 			return fmt.Errorf("failed to post message: %w", err)
 		}
-		fmt.Printf("Message posted successfully to profile '%s'.\n", profileName)
+		if !appCtx.Silent {
+			fmt.Fprintf(os.Stderr, "Message posted successfully to profile '%s'.\n", profileName)
+		}
 
 		return nil
 	},
 }
 
-func handleStream(prov provider.Interface, profileName, overrideUsername, iconEmoji string, tee bool) error {
-	fmt.Printf("Starting stream to profile '%s'. Press Ctrl+C to exit.\n", profileName)
+func handleStream(prov provider.Interface, profileName, overrideUsername, iconEmoji string, tee bool, silent bool) error {
+	if !silent {
+		fmt.Fprintf(os.Stderr, "Starting stream to profile '%s'. Press Ctrl+C to exit.\n", profileName)
+	}
 	lines := make(chan string)
 	scanner := bufio.NewScanner(os.Stdin)
 
@@ -143,12 +149,14 @@ func handleStream(prov provider.Interface, profileName, overrideUsername, iconEm
 		case line, ok := <-lines:
 			if !ok {
 				if len(buffer) > 0 {
-					fmt.Printf("Flushing %d remaining lines...\n", len(buffer))
+					fmt.Fprintf(os.Stderr, "Flushing %d remaining lines...\n", len(buffer))
 					if err := prov.PostMessage(strings.Join(buffer, "\n"), overrideUsername, iconEmoji); err != nil {
 						fmt.Fprintf(os.Stderr, "Error flushing remaining lines: %v\n", err)
 					}
 				}
-				fmt.Println("Stream finished.")
+				if !silent {
+					fmt.Fprintln(os.Stderr, "Stream finished.")
+				}
 				return nil
 			}
 			buffer = append(buffer, line)
@@ -156,6 +164,9 @@ func handleStream(prov provider.Interface, profileName, overrideUsername, iconEm
 			if len(buffer) > 0 {
 				if err := prov.PostMessage(strings.Join(buffer, "\n"), overrideUsername, iconEmoji); err != nil {
 					fmt.Fprintf(os.Stderr, "Error posting message: %v\n", err)
+				}
+				if !silent {
+					fmt.Fprintf(os.Stderr, "Posted %d lines to profile '%s'.\n", len(buffer), profileName)
 				}
 				buffer = nil
 			}
@@ -174,4 +185,5 @@ func init() {
 	postCmd.Flags().StringP("username", "u", "", "Override the username for this post")
 	postCmd.Flags().Bool("noop", false, "Dry run, do not actually post")
 	postCmd.Flags().StringP("iconemoji", "i", "", "Icon emoji to use for the post (slack provider only)")
+	postCmd.Flags().Bool("silent", false, "Suppress informational messages")
 }

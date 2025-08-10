@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/magifd2/scat/internal/config"
 	"github.com/spf13/cobra"
@@ -10,7 +11,7 @@ import (
 var useCmd = &cobra.Command{
 	Use:   "use [profile_name]",
 	Short: "Set the active profile",
-	Long:  `Set the active profile for scat.`, 
+	Long:  `Set the active profile for scat.`,
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		profileName := args[0]
@@ -27,7 +28,7 @@ var useCmd = &cobra.Command{
 		if err := cfg.Save(); err != nil {
 			return fmt.Errorf("saving config: %w", err)
 		}
-		fmt.Printf("Switched to profile: %s\n", profileName)
+		fmt.Fprintf(os.Stderr, "Switched to profile: %s\n", profileName)
 		return nil
 	},
 }
@@ -35,4 +36,3 @@ var useCmd = &cobra.Command{
 func init() {
 	profileCmd.AddCommand(useCmd)
 }
-
