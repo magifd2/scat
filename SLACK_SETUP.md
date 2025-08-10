@@ -1,0 +1,73 @@
+# scat Slack Setup Guide
+
+To use `scat` with the Slack provider, you need to create a Slack App and get a Bot Token with the appropriate permissions (scopes). This guide will walk you through the process.
+
+---
+
+### Step 1: Create a Slack App
+
+1.  Go to the [Slack API site](https://api.slack.com/apps) and log in to your account.
+
+2.  Click the **"Create New App"** button.
+
+3.  In the dialog that appears, select **"From scratch"**.
+
+4.  Enter an app name (e.g., `My Scat Bot`), select the workspace you want to install it to, and click **"Create App"**.
+
+### Step 2: Add Permissions (Scopes)
+
+Once you are on the app's management screen, you need to add the permissions that `scat` requires.
+
+1.  From the left sidebar, select **"OAuth & Permissions"**.
+
+2.  Scroll down to the **"Scopes"** section.
+
+3.  Under **"Bot Token Scopes"**, click the **"Add an OAuth Scope"** button and add each of the following scopes:
+
+    *   `chat:write`: Required to post messages to public channels.
+    *   `files:write`: Required to upload files.
+    *   `channels:read`: Required to list public channels (for the `channel list` command).
+    *   `groups:read`: Required to list private channels (for the `channel list` command).
+
+### Step 3: Install the App to Your Workspace
+
+After adding the scopes, you can install the app to your workspace to generate a token.
+
+1.  Scroll back to the top of the "OAuth & Permissions" page.
+
+2.  Click the **"Install to Workspace"** button.
+
+3.  On the next screen, click **"Allow"** to authorize the app.
+
+### Step 4: Get Your Bot Token
+
+After installation, the page will refresh, and you will see a **"Bot User OAuth Token"**.
+
+*   Copy this token, which starts with `xoxb-`. This is the token you will use to configure `scat`.
+
+### Step 5: Configure scat
+
+Use the token you just copied to create or update a `scat` profile.
+
+```bash
+# Create a new profile named "my-slack"
+scat profile add my-slack --provider slack --channel "#general"
+
+# After running the command above, you will be prompted to enter your token.
+# Paste the "xoxb-..." token you copied in Step 4 and press Enter.
+Enter Token (will not be displayed): [paste your token here]
+```
+
+Your setup is now complete.
+
+### Step 6: Invite the Bot to Channels
+
+For the bot to be able to post in a channel (especially private channels), it must be a member of that channel.
+
+*   In each Slack channel you want to post to, invite the bot using the following command:
+
+    ```
+    /invite @<your-app-name>
+    ```
+
+You are now ready to post to Slack using `scat`!
