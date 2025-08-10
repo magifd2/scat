@@ -2,6 +2,7 @@ package mock
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/magifd2/scat/internal/config"
 	"github.com/magifd2/scat/internal/provider"
@@ -11,11 +12,12 @@ import (
 type Provider struct {
 	Profile config.Profile
 	NoOp    bool
+	Debug   bool // Add Debug field
 }
 
 // NewProvider creates a new mock Provider.
-func NewProvider(p config.Profile, noop bool) (provider.Interface, error) {
-	return &Provider{Profile: p, NoOp: noop}, nil
+func NewProvider(p config.Profile, noop bool, debug bool) (provider.Interface, error) {
+	return &Provider{Profile: p, NoOp: noop, Debug: debug}, nil
 }
 
 // Capabilities returns the features supported by the mock provider.
@@ -29,6 +31,9 @@ func (p *Provider) Capabilities() provider.Capabilities {
 
 // PostMessage prints a mock message.
 func (p *Provider) PostMessage(text, overrideUsername, iconEmoji string) error {
+	if p.Debug {
+		fmt.Fprintf(os.Stderr, "[DEBUG] Mock PostMessage: Text=\"%s\", Username=\"%s\", IconEmoji=\"%s\"\n", text, overrideUsername, iconEmoji)
+	}
 	fmt.Println("-- [MOCK] PostMessage called --")
 	fmt.Printf("Text: %s\n", text)
 	return nil
@@ -36,6 +41,9 @@ func (p *Provider) PostMessage(text, overrideUsername, iconEmoji string) error {
 
 // PostFile prints a mock message.
 func (p *Provider) PostFile(filePath, filename, filetype, comment, overrideUsername, iconEmoji string) error {
+	if p.Debug {
+		fmt.Fprintf(os.Stderr, "[DEBUG] Mock PostFile: FilePath=\"%s\", Filename=\"%s\"\n", filePath, filename)
+	}
 	fmt.Println("-- [MOCK] PostFile called --")
 	fmt.Printf("File: %s\n", filePath)
 	return nil
@@ -43,5 +51,8 @@ func (p *Provider) PostFile(filePath, filename, filetype, comment, overrideUsern
 
 // ListChannels returns an error as it's not supported.
 func (p *Provider) ListChannels() ([]string, error) {
+	if p.Debug {
+		fmt.Fprintln(os.Stderr, "[DEBUG] Mock ListChannels called")
+	}
 	return nil, fmt.Errorf("ListChannels is not supported by the mock provider")
 }

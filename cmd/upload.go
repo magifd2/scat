@@ -43,7 +43,7 @@ var uploadCmd = &cobra.Command{
 		}
 
 		// Get provider instance
-		prov, err := GetProvider(profile, noop)
+		prov, err := GetProvider(cmd, profile, noop)
 		if err != nil {
 			return err
 		}

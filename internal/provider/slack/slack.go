@@ -19,18 +19,20 @@ const (
 	getUploadURLExternalURL  = "https://slack.com/api/files.getUploadURLExternal"
 	completeUploadExternalURL = "https://slack.com/api/files.completeUploadExternal"
 	conversationsListURL   = "https://slack.com/api/conversations.list"
+	conversationsJoinURL   = "https://slack.com/api/conversations.join"
 )
 
 // Provider implements the provider.Interface for Slack.
 type Provider struct {
 	Profile        config.Profile
 	NoOp           bool
+	Debug          bool // Add Debug field
 	channelIDCache map[string]string // Cache for channel name to ID mapping
 }
 
 // NewProvider creates a new Slack Provider.
-func NewProvider(p config.Profile, noop bool) (provider.Interface, error) {
-	return &Provider{Profile: p, NoOp: noop}, nil
+func NewProvider(p config.Profile, noop bool, debug bool) (provider.Interface, error) {
+	return &Provider{Profile: p, NoOp: noop, Debug: debug}, nil
 }
 
 // Capabilities returns the features supported by the Slack provider.
@@ -103,16 +105,34 @@ func (p *Provider) PostMessage(text, overrideUsername, iconEmoji string) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal slack payload: %w", err)
 	}
-	_, err = p.sendRequest("POST", postMessageURL, bytes.NewBuffer(jsonPayload), "application/json; charset=utf-8")
-	return err
+
+	// Attempt to post message
+	respBody, err := p.sendRequest("POST", postMessageURL, bytes.NewBuffer(jsonPayload), "application/json; charset=utf-8")
+	if err != nil {
+		// Check if the error is 'not_in_channel'
+		var apiErr apiResponse
+		if json.Unmarshal(respBody, &apiErr) == nil && apiErr.Error == "not_in_channel" {
+			fmt.Fprintf(os.Stderr, "Bot not in channel '%s'. Attempting to join...\n", p.Profile.Channel)
+			if joinErr := p.joinChannel(channelID); joinErr != nil {
+				return fmt.Errorf("failed to join channel '%s': %w", p.Profile.Channel, joinErr)
+			}
+			fmt.Fprintf(os.Stderr, "Successfully joined channel '%s'. Retrying post...\n", p.Profile.Channel)
+			// Retry post after joining
+			_, retryErr := p.sendRequest("POST", postMessageURL, bytes.NewBuffer(jsonPayload), "application/json; charset=utf-8")
+			return retryErr
+		}
+		return err // Return original error if not 'not_in_channel' or unmarshal fails
+	}
+
+	return nil
 }
 
 func (p *Provider) PostFile(filePath, filename, filetype, comment, overrideUsername, iconEmoji string) error {
 	if p.NoOp {
-		fmt.Printf("--- NOOP: Dry run ---\n")
+		fmt.Printf("---" + "NOOP: Dry run" + "---")
 		fmt.Printf("Provider: slack\n")
 		fmt.Printf("Action: Upload file %s\n", filePath)
-		fmt.Printf("---------------------\n")
+		fmt.Printf("---------------------" + "")
 		return nil
 	}
 
@@ -248,7 +268,43 @@ func (p *Provider) populateChannelCache() error {
 	return nil
 }
 
+func (p *Provider) joinChannel(channelID string) error {
+	joinPayload := map[string]string{"channel": channelID}
+	jsonPayload, err := json.Marshal(joinPayload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal join payload: %w", err)
+	}
+
+	respBody, err := p.sendRequest("POST", conversationsJoinURL, bytes.NewBuffer(jsonPayload), "application/json; charset=utf-8")
+	if err != nil {
+		return err
+	}
+
+	var joinResp apiResponse
+	if err := json.Unmarshal(respBody, &joinResp); err != nil {
+		return fmt.Errorf("failed to unmarshal join response: %w", err)
+	}
+
+	if !joinResp.Ok {
+		return fmt.Errorf("slack API error joining channel: %s", joinResp.Error)
+	}
+
+	return nil
+}
+
 func (p *Provider) sendRequest(method, url string, body io.Reader, contentType string) ([]byte, error) {
+	if p.Debug {
+		fmt.Fprintf(os.Stderr, "[DEBUG] Request: %s %s\n", method, url)
+		if body != nil {
+			// Read body for logging, then reset for actual request
+			var buf bytes.Buffer
+			t_body := io.TeeReader(body, &buf)
+			requestBytes, _ := io.ReadAll(t_body)
+			fmt.Fprintf(os.Stderr, "[DEBUG] Request Body: %s\n", string(requestBytes))
+			body = &buf // Reset body for actual request
+		}
+	}
+
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -269,6 +325,11 @@ func (p *Provider) sendRequest(method, url string, body io.Reader, contentType s
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	if p.Debug {
+		fmt.Fprintf(os.Stderr, "[DEBUG] Response Status: %s\n", resp.Status)
+		fmt.Fprintf(os.Stderr, "[DEBUG] Response Body: %s\n", string(bodyBytes))
 	}
 
 	if resp.StatusCode >= 400 {

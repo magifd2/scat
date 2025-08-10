@@ -23,7 +23,7 @@ var channelListCmd = &cobra.Command{
 		results := make(map[string][]string)
 
 		for profileName, profile := range cfg.Profiles {
-			prov, err := GetProvider(profile, false) // noop is false for listing
+			prov, err := GetProvider(cmd, profile, false) // noop is false for listing
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Warning: could not get provider for profile '%s': %v\n", profileName, err)
 				continue

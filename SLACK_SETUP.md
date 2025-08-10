@@ -28,6 +28,7 @@ Once you are on the app's management screen, you need to add the permissions tha
     *   `files:write`: Required to upload files.
     *   `channels:read`: Required to list public channels (for the `channel list` command).
     *   `groups:read`: Required to list private channels (for the `channel list` command).
+    *   `channels:join`: Required for the bot to automatically join public channels before posting.
 
 ### Step 3: Install the App to Your Workspace
 
@@ -51,7 +52,7 @@ Use the token you just copied to create or update a `scat` profile.
 
 ```bash
 # Create a new profile named "my-slack"
-scat profile add my-slack --provider slack --channel "#general"
+scat profile add my-slack-workspace --provider slack --channel "#general"
 
 # After running the command above, you will be prompted to enter your token.
 # Paste the "xoxb-..." token you copied in Step 4 and press Enter.

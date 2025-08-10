@@ -26,4 +26,5 @@ func Execute() error {
 }
 
 func init() {
+	rootCmd.PersistentFlags().Bool("debug", false, "Enable debug logging")
 }
