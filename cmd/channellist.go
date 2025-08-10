@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/magifd2/scat/internal/appcontext"
 	"github.com/magifd2/scat/internal/config"
 	"github.com/spf13/cobra"
 )
@@ -12,8 +13,17 @@ import (
 var channelListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List available channels for supported providers",
-	Long:  `Iterates through all configured profiles and lists the available channels for each profile whose provider supports this feature.`, 
+	Long:  `Iterates through all configured profiles and lists the available channels for each profile whose provider supports this feature.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// Get debug flag from persistent flags
+		debug, _ := cmd.PersistentFlags().GetBool("debug")
+
+		// Create app context
+		appCtx := appcontext.Context{
+			Debug: debug,
+			NoOp:  false, // Noop is not relevant for listing
+		}
+
 		cfg, err := config.Load()
 		if err != nil {
 			return fmt.Errorf("failed to load config: %w", err)
@@ -23,7 +33,7 @@ var channelListCmd = &cobra.Command{
 		results := make(map[string][]string)
 
 		for profileName, profile := range cfg.Profiles {
-			prov, err := GetProvider(cmd, profile, false) // noop is false for listing
+			prov, err := GetProvider(appCtx, profile) // noop is false for listing
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Warning: could not get provider for profile '%s': %v\n", profileName, err)
 				continue

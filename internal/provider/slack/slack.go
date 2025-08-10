@@ -10,6 +10,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/magifd2/scat/internal/appcontext"
 	"github.com/magifd2/scat/internal/config"
 	"github.com/magifd2/scat/internal/provider"
 )
@@ -25,14 +26,13 @@ const (
 // Provider implements the provider.Interface for Slack.
 type Provider struct {
 	Profile        config.Profile
-	NoOp           bool
-	Debug          bool // Add Debug field
+	Context        appcontext.Context // Use appcontext.Context
 	channelIDCache map[string]string // Cache for channel name to ID mapping
 }
 
 // NewProvider creates a new Slack Provider.
-func NewProvider(p config.Profile, noop bool, debug bool) (provider.Interface, error) {
-	return &Provider{Profile: p, NoOp: noop, Debug: debug}, nil
+func NewProvider(p config.Profile, ctx appcontext.Context) (provider.Interface, error) {
+	return &Provider{Profile: p, Context: ctx}, nil
 }
 
 // Capabilities returns the features supported by the Slack provider.
@@ -127,11 +127,11 @@ func (p *Provider) PostMessage(text, overrideUsername, iconEmoji string) error {
 }
 
 func (p *Provider) PostFile(filePath, filename, filetype, comment, overrideUsername, iconEmoji string) error {
-	if p.NoOp {
+	if p.Context.NoOp {
 		fmt.Printf("---\n")
 		fmt.Printf("Provider: slack\n")
 		fmt.Printf("Action: Upload file %s\n", filePath)
-		fmt.Printf("---------------------")
+		fmt.Printf("---------------------\n")
 		return nil
 	}
 
@@ -145,13 +145,13 @@ func (p *Provider) PostFile(filePath, filename, filetype, comment, overrideUsern
 	getURLParams.Add("filename", filename)
 	getURLParams.Add("length", fmt.Sprintf("%d", fi.Size()))
 
-	getURLRespBytes, err := p.sendRequest("GET", getUploadURLExternalURL+"?"+getURLParams.Encode(), nil, "")
+	respBody, err := p.sendRequest("GET", getUploadURLExternalURL+"?"+getURLParams.Encode(), nil, "")
 	if err != nil {
 		return fmt.Errorf("step 1 (getUploadURLExternal) failed: %w", err)
 	}
 
 	var getURLResp getUploadURLExternalResponse
-	if err := json.Unmarshal(getURLRespBytes, &getURLResp); err != nil {
+	if err := json.Unmarshal(respBody, &getURLResp); err != nil {
 		return fmt.Errorf("failed to unmarshal getUploadURLExternal response: %w", err)
 	}
 	if !getURLResp.Ok {
@@ -292,7 +292,7 @@ func (p *Provider) joinChannel(channelID string) error {
 }
 
 func (p *Provider) sendRequest(method, url string, body io.Reader, contentType string) ([]byte, error) {
-	if p.Debug {
+	if p.Context.NoOp {
 		fmt.Fprintf(os.Stderr, "[DEBUG] Request: %s %s\n", method, url)
 		if body != nil {
 			// Read body for logging, then reset for actual request
@@ -326,7 +326,7 @@ func (p *Provider) sendRequest(method, url string, body io.Reader, contentType s
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	if p.Debug {
+	if p.Context.Debug {
 		fmt.Fprintf(os.Stderr, "[DEBUG] Response Status: %s\n", resp.Status)
 		fmt.Fprintf(os.Stderr, "[DEBUG] Response Body: %s\n", string(bodyBytes))
 	}

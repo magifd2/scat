@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/magifd2/scat/internal/appcontext"
 	"github.com/magifd2/scat/internal/config"
 	"github.com/magifd2/scat/internal/provider"
 	"github.com/spf13/cobra"
@@ -42,13 +43,22 @@ var postCmd = &cobra.Command{
 		noop, _ := cmd.Flags().GetBool("noop")
 		fromFile, _ := cmd.Flags().GetString("from-file")
 
+		// Get debug flag from persistent flags
+		debug, _ := cmd.PersistentFlags().GetBool("debug")
+
+		// Create app context
+		appCtx := appcontext.Context{
+			Debug: debug,
+			NoOp:  noop,
+		}
+
 		// Override channel from profile if flag is set
 		if channel != "" {
 			profile.Channel = channel
 		}
 
 		// Get provider instance
-		prov, err := GetProvider(cmd, profile, noop)
+		prov, err := GetProvider(appCtx, profile)
 		if err != nil {
 			return err
 		}
@@ -147,7 +157,6 @@ func handleStream(prov provider.Interface, profileName, overrideUsername, iconEm
 				if err := prov.PostMessage(strings.Join(buffer, "\n"), overrideUsername, iconEmoji); err != nil {
 					fmt.Fprintf(os.Stderr, "Error posting message: %v\n", err)
 				}
-				fmt.Printf("Posted %d lines to profile '%s'.\n", len(buffer), profileName)
 				buffer = nil
 			}
 		}

@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/magifd2/scat/internal/appcontext"
 	"github.com/magifd2/scat/internal/config"
 	"github.com/spf13/cobra"
 )
@@ -37,13 +38,22 @@ var uploadCmd = &cobra.Command{
 		noop, _ := cmd.Flags().GetBool("noop")
 		filePath, _ := cmd.Flags().GetString("file")
 
+		// Get debug flag from persistent flags
+		debug, _ := cmd.PersistentFlags().GetBool("debug")
+
+		// Create app context
+		appCtx := appcontext.Context{
+			Debug: debug,
+			NoOp:  noop,
+		}
+
 		// Override channel from profile if flag is set
 		if channel != "" {
 			profile.Channel = channel
 		}
 
 		// Get provider instance
-		prov, err := GetProvider(cmd, profile, noop)
+		prov, err := GetProvider(appCtx, profile)
 		if err != nil {
 			return err
 		}
