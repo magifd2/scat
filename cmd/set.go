@@ -52,6 +52,9 @@ tokenBytes, err := term.ReadPassword(int(syscall.Stdin))
 
 		switch key {
 		case "provider":
+			if value != "mock" && value != "slack" {
+				return fmt.Errorf("invalid provider '%s'. avalid values are 'mock' or 'slack'", value)
+			}
 			profile.Provider = value
 		case "endpoint":
 			profile.Endpoint = value

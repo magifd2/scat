@@ -16,11 +16,7 @@ func GetProvider(p config.Profile, noop bool) (provider.Interface, error) {
 		return slack.NewProvider(p, noop)
 	case "mock":
 		return mock.NewProvider(p, noop)
-	case "generic":
-		// The user decided to remove the generic provider, but we can keep the case
-		// and point it to mock to avoid breaking old configs.
-		return mock.NewProvider(p, noop)
 	default:
-		return nil, fmt.Errorf("unknown provider: %s", p.Provider)
+		return nil, fmt.Errorf("unknown provider: '%s'", p.Provider)
 	}
 }

@@ -19,8 +19,8 @@ type Config struct {
 
 // Profile defines the settings for a specific destination endpoint.
 type Profile struct {
-	Provider string `json:"provider,omitempty"` // "generic" or "slack"
-	Endpoint string `json:"endpoint,omitempty"` // Used by "generic" provider
+	Provider string `json:"provider,omitempty"` // "mock" or "slack"
+	Endpoint string `json:"endpoint,omitempty"` // Used by "generic" provider (deprecated)
 	Channel  string `json:"channel,omitempty"`  // Used by "slack" provider
 	Token    string `json:"token,omitempty"`
 	Username string `json:"username,omitempty"`
@@ -73,13 +73,10 @@ func Load() (*Config, error) {
 
 	// For backward compatibility, populate limits if they are not set.
 	for name, profile := range cfg.Profiles {
-		if profile.Provider == "" {
-			profile.Provider = "generic" // Or mock, depending on desired behavior for old configs
-		}
 		if profile.Limits.MaxFileSizeBytes == 0 && profile.Limits.MaxStdinSizeBytes == 0 {
 			profile.Limits = newDefaultLimits()
+			cfg.Profiles[name] = profile
 		}
-		cfg.Profiles[name] = profile
 	}
 
 	return &cfg, nil
