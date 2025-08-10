@@ -13,10 +13,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// Holds the timestamp of the current thread for the lifetime of the command execution.
+var currentThreadTS string
+
 var postCmd = &cobra.Command{
 	Use:   "post [file]",
 	Short: "Post content from a file or stdin to a configured endpoint",
-	Long:  `Posts content to the destination specified in the active profile. Content can be read from a file or from standard input if no file is specified.`, 
+	Long:  `Posts content to the destination specified in the active profile. Content can be read from a file or from standard input if no file is specified.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Load config
 		cfg, err := config.Load()
@@ -36,6 +39,8 @@ var postCmd = &cobra.Command{
 
 		// Get optional flags
 		username, _ := cmd.Flags().GetString("username")
+		iconEmoji, _ := cmd.Flags().GetString("iconemoji")
+		thread, _ := cmd.Flags().GetBool("thread")
 		tee, _ := cmd.Flags().GetBool("tee")
 		noop, _ := cmd.Flags().GetBool("noop")
 
@@ -48,7 +53,7 @@ var postCmd = &cobra.Command{
 			if len(args) > 0 {
 				return fmt.Errorf("cannot use file argument with --stream flag")
 			}
-			return handleStream(apiClient, profileName, username, tee)
+			return handleStream(apiClient, profileName, username, iconEmoji, thread, tee)
 		}
 
 		// Handle file post or stdin post
@@ -63,8 +68,12 @@ var postCmd = &cobra.Command{
 				filename = filePath
 			}
 
-			if err := apiClient.PostFile(filePath, filename, filetype, comment, username); err != nil {
+			respTS, err := apiClient.PostFile(filePath, filename, filetype, comment, username, iconEmoji, thread, currentThreadTS)
+			if err != nil {
 				return fmt.Errorf("failed to post file: %w", err)
+			}
+			if thread && currentThreadTS == "" {
+				currentThreadTS = respTS
 			}
 			fmt.Printf("File '%s' posted successfully to profile '%s'.\n", filename, profileName)
 
@@ -80,8 +89,12 @@ var postCmd = &cobra.Command{
 				if tee {
 					fmt.Print(content)
 				}
-				if err := apiClient.PostMessage(content, username); err != nil {
+				respTS, err := apiClient.PostMessage(content, username, iconEmoji, thread, currentThreadTS)
+				if err != nil {
 					return fmt.Errorf("failed to post message: %w", err)
+				}
+				if thread && currentThreadTS == "" {
+					currentThreadTS = respTS
 				}
 				fmt.Printf("Message posted successfully to profile '%s'.\n", profileName)
 			} else {
@@ -93,7 +106,7 @@ var postCmd = &cobra.Command{
 	},
 }
 
-func handleStream(apiClient *client.Client, profileName, overrideUsername string, tee bool) error {
+func handleStream(apiClient *client.Client, profileName, overrideUsername, iconEmoji string, thread, tee bool) error {
 	fmt.Printf("Starting stream to profile '%s'. Press Ctrl+C to exit.\n", profileName)
 	lines := make(chan string)
 	scanner := bufio.NewScanner(os.Stdin)
@@ -119,8 +132,12 @@ func handleStream(apiClient *client.Client, profileName, overrideUsername string
 			if !ok {
 				if len(buffer) > 0 {
 					fmt.Printf("Flushing %d remaining lines...\n", len(buffer))
-					if err := apiClient.PostMessage(strings.Join(buffer, "\n"), overrideUsername); err != nil {
+					respTS, err := apiClient.PostMessage(strings.Join(buffer, "\n"), overrideUsername, iconEmoji, thread, currentThreadTS)
+					if err != nil {
 						fmt.Fprintf(os.Stderr, "Error flushing remaining lines: %v\n", err)
+					}
+					if thread && currentThreadTS == "" {
+						currentThreadTS = respTS
 					}
 				}
 				fmt.Println("Stream finished.")
@@ -129,8 +146,12 @@ func handleStream(apiClient *client.Client, profileName, overrideUsername string
 			buffer = append(buffer, line)
 		case <-ticker.C:
 			if len(buffer) > 0 {
-				if err := apiClient.PostMessage(strings.Join(buffer, "\n"), overrideUsername); err != nil {
+				respTS, err := apiClient.PostMessage(strings.Join(buffer, "\n"), overrideUsername, iconEmoji, thread, currentThreadTS)
+				if err != nil {
 					fmt.Fprintf(os.Stderr, "Error posting message: %v\n", err)
+				}
+				if thread && currentThreadTS == "" {
+					currentThreadTS = respTS
 				}
 				fmt.Printf("Posted %d lines to profile '%s'.\n", len(buffer), profileName)
 				buffer = nil
@@ -150,4 +171,6 @@ func init() {
 	postCmd.Flags().StringP("username", "u", "", "Username to post as (overrides the profile default)")
 	postCmd.Flags().BoolP("tee", "t", false, "Print stdin to screen before posting")
 	postCmd.Flags().Bool("noop", false, "Skip posting to endpoint, for testing purposes")
+	postCmd.Flags().StringP("iconemoji", "i", "", "Icon emoji to use for the post (slack provider only)")
+	postCmd.Flags().Bool("thread", false, "Post as a reply in a thread (slack provider only)")
 }
