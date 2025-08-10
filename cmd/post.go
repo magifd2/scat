@@ -1,9 +1,12 @@
 package cmd
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"os"
+	"strings"
+	"time"
 
 	"github.com/magifd2/scat/internal/client"
 	"github.com/magifd2/scat/internal/config"
@@ -34,7 +37,13 @@ var postCmd = &cobra.Command{
 		// Create client
 		 apiClient := client.NewClient(profile)
 
-		// Handle input
+		// Handle stream
+		stream, _ := cmd.Flags().GetBool("stream")
+		if stream {
+			return handleStream(apiClient, profileName)
+		}
+
+		// Handle file/stdin post
 		var content string
 		if len(args) > 0 {
 			// Read from file
@@ -66,6 +75,50 @@ var postCmd = &cobra.Command{
 		fmt.Printf("Message posted successfully to profile '%s'.\n", profileName)
 		return nil
 	},
+}
+
+func handleStream(apiClient *client.Client, profileName string) error {
+	fmt.Printf("Starting stream to profile '%s'. Press Ctrl+C to exit.\n", profileName)
+	lines := make(chan string)
+	scanner := bufio.NewScanner(os.Stdin)
+
+	// Read lines from stdin in a separate goroutine
+	go func() {
+		for scanner.Scan() {
+			lines <- scanner.Text()
+		}
+		close(lines)
+	}()
+
+	var buffer []string	
+	ticker := time.NewTicker(3 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case line, ok := <-lines:
+			if !ok {
+				// Post any remaining lines in the buffer before exiting
+				if len(buffer) > 0 {
+					fmt.Printf("Flushing %d remaining lines...\n", len(buffer))
+					if err := apiClient.PostMessage(strings.Join(buffer, "\n")); err != nil {
+						fmt.Fprintf(os.Stderr, "Error flushing remaining lines: %v\n", err)
+					}
+				}
+				fmt.Println("Stream finished.")
+				return nil
+			}
+			buffer = append(buffer, line)
+		case <-ticker.C:
+			if len(buffer) > 0 {
+				if err := apiClient.PostMessage(strings.Join(buffer, "\n")); err != nil {
+					fmt.Fprintf(os.Stderr, "Error posting message: %v\n", err)
+				}
+				fmt.Printf("Posted %d lines to profile '%s'.\n", len(buffer), profileName)
+				buffer = nil // Clear buffer after posting
+			}
+		}
+	}
 }
 
 func init() {
