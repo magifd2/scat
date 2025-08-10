@@ -83,3 +83,11 @@ To build from source:
 ```bash
 make build
 ```
+
+## Acknowledgements
+
+This project is heavily inspired by and based on the concepts of [bcicen/slackcat](https://github.com/bcicen/slackcat). The core logic for handling file/stdin streaming and posting was re-implemented with reference to the original `slackcat` codebase. `slackcat` is also distributed under the MIT License.
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
