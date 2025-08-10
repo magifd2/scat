@@ -5,15 +5,14 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/magifd2/scat/internal/client"
 	"github.com/magifd2/scat/internal/config"
 	"github.com/spf13/cobra"
 )
 
 var channelListCmd = &cobra.Command{
 	Use:   "list",
-	Short: "List available channels for Slack providers",
-	Long:  `Iterates through all configured profiles and lists the available channels for each profile where the provider is set to "slack".`,
+	Short: "List available channels for supported providers",
+	Long:  `Iterates through all configured profiles and lists the available channels for each profile whose provider supports this feature.`, 
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg, err := config.Load()
 		if err != nil {
@@ -24,20 +23,29 @@ var channelListCmd = &cobra.Command{
 		results := make(map[string][]string)
 
 		for profileName, profile := range cfg.Profiles {
-			if profile.Provider == "slack" {
-				apiClient := client.NewClient(profile, false) // noop is false for listing
-				channels, err := apiClient.ListSlackChannels()
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "Warning: could not list channels for profile '%s': %v\n", profileName, err)
-					continue
-				}
-				if jsonOutput {
-					results[profileName] = channels
-				} else {
-					fmt.Printf("Channels for profile: %s\n", profileName)
-					for _, ch := range channels {
-						fmt.Printf("  - %s\n", ch)
-					}
+			prov, err := GetProvider(profile, false) // noop is false for listing
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: could not get provider for profile '%s': %v\n", profileName, err)
+				continue
+			}
+
+			caps := prov.Capabilities()
+			if !caps.CanListChannels {
+				continue // Skip providers that don't support listing channels
+			}
+
+			channels, err := prov.ListChannels()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: could not list channels for profile '%s': %v\n", profileName, err)
+				continue
+			}
+
+			if jsonOutput {
+				results[profileName] = channels
+			} else {
+				fmt.Printf("Channels for profile: %s\n", profileName)
+				for _, ch := range channels {
+					fmt.Printf("  - %s\n", ch)
 				}
 			}
 		}

@@ -42,10 +42,8 @@ func Load() (*Config, error) {
 				CurrentProfile: "default",
 				Profiles: map[string]Profile{
 					"default": {
-						Provider: "generic",
-						Endpoint: "https://example.com/hooks/xxxx-xxxx",
-						Token:    "YOUR_STATIC_TOKEN_HERE",
-						Username: "scat-bot",
+						Provider: "mock",
+						Channel:  "#mock-channel",
 					},
 				},
 			}, nil

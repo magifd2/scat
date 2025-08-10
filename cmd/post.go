@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/magifd2/scat/internal/client"
 	"github.com/magifd2/scat/internal/config"
+	"github.com/magifd2/scat/internal/provider"
 	"github.com/spf13/cobra"
 )
 
@@ -44,8 +44,11 @@ var postCmd = &cobra.Command{
 		tee, _ := cmd.Flags().GetBool("tee")
 		noop, _ := cmd.Flags().GetBool("noop")
 
-		// Create client
-		apiClient := client.NewClient(profile, noop)
+		// Get provider instance
+		prov, err := GetProvider(profile, noop)
+		if err != nil {
+			return err
+		}
 
 		// Handle stream
 		stream, _ := cmd.Flags().GetBool("stream")
@@ -53,7 +56,7 @@ var postCmd = &cobra.Command{
 			if len(args) > 0 {
 				return fmt.Errorf("cannot use file argument with --stream flag")
 			}
-			return handleStream(apiClient, profileName, username, iconEmoji, thread, tee)
+			return handleStream(prov, profileName, username, iconEmoji, thread, tee)
 		}
 
 		// Handle file post or stdin post
@@ -68,7 +71,7 @@ var postCmd = &cobra.Command{
 				filename = filePath
 			}
 
-			respTS, err := apiClient.PostFile(filePath, filename, filetype, comment, username, iconEmoji, thread, currentThreadTS)
+			respTS, err := prov.PostFile(filePath, filename, filetype, comment, username, iconEmoji, thread, currentThreadTS)
 			if err != nil {
 				return fmt.Errorf("failed to post file: %w", err)
 			}
@@ -89,7 +92,7 @@ var postCmd = &cobra.Command{
 				if tee {
 					fmt.Print(content)
 				}
-				respTS, err := apiClient.PostMessage(content, username, iconEmoji, thread, currentThreadTS)
+				respTS, err := prov.PostMessage(content, username, iconEmoji, thread, currentThreadTS)
 				if err != nil {
 					return fmt.Errorf("failed to post message: %w", err)
 				}
@@ -106,7 +109,7 @@ var postCmd = &cobra.Command{
 	},
 }
 
-func handleStream(apiClient *client.Client, profileName, overrideUsername, iconEmoji string, thread, tee bool) error {
+func handleStream(prov provider.Interface, profileName, overrideUsername, iconEmoji string, thread, tee bool) error {
 	fmt.Printf("Starting stream to profile '%s'. Press Ctrl+C to exit.\n", profileName)
 	lines := make(chan string)
 	scanner := bufio.NewScanner(os.Stdin)
@@ -132,7 +135,7 @@ func handleStream(apiClient *client.Client, profileName, overrideUsername, iconE
 			if !ok {
 				if len(buffer) > 0 {
 					fmt.Printf("Flushing %d remaining lines...\n", len(buffer))
-					respTS, err := apiClient.PostMessage(strings.Join(buffer, "\n"), overrideUsername, iconEmoji, thread, currentThreadTS)
+					respTS, err := prov.PostMessage(strings.Join(buffer, "\n"), overrideUsername, iconEmoji, thread, currentThreadTS)
 					if err != nil {
 						fmt.Fprintf(os.Stderr, "Error flushing remaining lines: %v\n", err)
 					}
@@ -146,7 +149,7 @@ func handleStream(apiClient *client.Client, profileName, overrideUsername, iconE
 			buffer = append(buffer, line)
 		case <-ticker.C:
 			if len(buffer) > 0 {
-				respTS, err := apiClient.PostMessage(strings.Join(buffer, "\n"), overrideUsername, iconEmoji, thread, currentThreadTS)
+				respTS, err := prov.PostMessage(strings.Join(buffer, "\n"), overrideUsername, iconEmoji, thread, currentThreadTS)
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "Error posting message: %v\n", err)
 				}
