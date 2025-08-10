@@ -107,11 +107,10 @@ func (p *Provider) PostMessage(text, overrideUsername, iconEmoji string) error {
 	}
 
 	// Attempt to post message
-	respBody, err := p.sendRequest("POST", postMessageURL, bytes.NewBuffer(jsonPayload), "application/json; charset=utf-8")
+	_, err = p.sendRequest("POST", postMessageURL, bytes.NewBuffer(jsonPayload), "application/json; charset=utf-8")
 	if err != nil {
 		// Check if the error is 'not_in_channel'
-		var apiErr apiResponse
-		if json.Unmarshal(respBody, &apiErr) == nil && apiErr.Error == "not_in_channel" {
+		if strings.Contains(err.Error(), "slack API error: not_in_channel") {
 			fmt.Fprintf(os.Stderr, "Bot not in channel '%s'. Attempting to join...\n", p.Profile.Channel)
 			if joinErr := p.joinChannel(channelID); joinErr != nil {
 				return fmt.Errorf("failed to join channel '%s': %w", p.Profile.Channel, joinErr)
@@ -121,7 +120,7 @@ func (p *Provider) PostMessage(text, overrideUsername, iconEmoji string) error {
 			_, retryErr := p.sendRequest("POST", postMessageURL, bytes.NewBuffer(jsonPayload), "application/json; charset=utf-8")
 			return retryErr
 		}
-		return err // Return original error if not 'not_in_channel' or unmarshal fails
+		return err // Return original error if not 'not_in_channel'
 	}
 
 	return nil
@@ -129,10 +128,10 @@ func (p *Provider) PostMessage(text, overrideUsername, iconEmoji string) error {
 
 func (p *Provider) PostFile(filePath, filename, filetype, comment, overrideUsername, iconEmoji string) error {
 	if p.NoOp {
-		fmt.Printf("---" + "NOOP: Dry run" + "---")
+		fmt.Printf("---\n")
 		fmt.Printf("Provider: slack\n")
 		fmt.Printf("Action: Upload file %s\n", filePath)
-		fmt.Printf("---------------------" + "")
+		fmt.Printf("---------------------")
 		return nil
 	}
 
@@ -180,7 +179,7 @@ func (p *Provider) PostFile(filePath, filename, filetype, comment, overrideUsern
 	defer uploadResp.Body.Close()
 	if uploadResp.StatusCode != 200 {
 		body, _ := io.ReadAll(uploadResp.Body)
-		return fmt.Errorf("upload to url failed with status %d: %s", uploadResp.StatusCode, string(body)) 
+		return fmt.Errorf("upload to url failed with status %d: %s", uploadResp.StatusCode, string(body))
 	}
 
 	// Step 3: Complete the upload
