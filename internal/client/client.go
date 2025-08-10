@@ -13,6 +13,11 @@ import (
 	"github.com/magifd2/scat/internal/config"
 )
 
+const (
+	slackPostMessageURL = "https://slack.com/api/chat.postMessage"
+	slackFileUploadURL  = "https://slack.com/api/files.upload"
+)
+
 // Client is responsible for sending messages to a configured endpoint.
 type Client struct {
 	Profile config.Profile
@@ -24,46 +29,65 @@ func NewClient(p config.Profile, noop bool) *Client {
 	return &Client{Profile: p, NoOp: noop}
 }
 
-// MessagePayload defines the JSON structure for a simple text message.
-type MessagePayload struct {
+// --- Generic Provider Structs ---
+type GenericMessagePayload struct {
+	Text     string `json:"text"`
+	Username string `json:"username,omitempty"`
+}
+
+// --- Slack Provider Structs ---
+type SlackMessagePayload struct {
+	Channel  string `json:"channel"`
 	Text     string `json:"text"`
 	Username string `json:"username,omitempty"`
 }
 
 // PostMessage sends a simple text message to the endpoint.
 func (c *Client) PostMessage(text, overrideUsername string) error {
-	username := c.Profile.Username
-	if overrideUsername != "" {
-		username = overrideUsername
+	switch c.Profile.Provider {
+	case "slack":
+		return c.postMessageToSlack(text, overrideUsername)
+	case "generic":
+		return c.postMessageToGeneric(text, overrideUsername)
+	default:
+		return fmt.Errorf("unknown provider: %s", c.Profile.Provider)
 	}
-
-	payload := MessagePayload{
-		Text:     text,
-		Username: username,
-	}
-
-	jsonPayload, err := json.Marshal(payload)
-	if err != nil {
-		return fmt.Errorf("failed to marshal payload: %w", err)
-	}
-
-	if c.NoOp {
-		fmt.Printf("---\n")
-		fmt.Printf("Profile: %s\n", c.Profile.Endpoint) // Simplified profile name for now
-		fmt.Printf("Payload: %s\n", string(jsonPayload))
-		fmt.Printf("-----\n")
-		return nil
-	}
-
-	return c.sendRequest(bytes.NewBuffer(jsonPayload), "application/json")
 }
 
 // PostFile uploads a file using multipart/form-data.
 func (c *Client) PostFile(filePath, filename, filetype, comment, overrideUsername string) error {
+	switch c.Profile.Provider {
+	case "slack":
+		return c.postFileToSlack(filePath, filename, filetype, comment, overrideUsername)
+	case "generic":
+		return c.postFileToGeneric(filePath, filename, filetype, comment, overrideUsername)
+	default:
+		return fmt.Errorf("unknown provider: %s", c.Profile.Provider)
+	}
+}
+
+// --- Generic Provider Methods ---
+
+func (c *Client) postMessageToGeneric(text, overrideUsername string) error {
+	username := c.Profile.Username
+	if overrideUsername != "" {
+		username = overrideUsername
+	}
+	payload := GenericMessagePayload{
+		Text:     text,
+		Username: username,
+	}
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal payload: %w", err)
+	}
+	return c.sendRequest(c.Profile.Endpoint, bytes.NewBuffer(jsonPayload), "application/json")
+}
+
+func (c *Client) postFileToGeneric(filePath, filename, filetype, comment, overrideUsername string) error {
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 
-	// Add file part
 	file, err := os.Open(filePath)
 	if err != nil {
 		return fmt.Errorf("failed to open file: %w", err)
@@ -78,7 +102,6 @@ func (c *Client) PostFile(filePath, filename, filetype, comment, overrideUsernam
 		return fmt.Errorf("failed to copy file to buffer: %w", err)
 	}
 
-	// Add other fields
 	username := c.Profile.Username
 	if overrideUsername != "" {
 		username = overrideUsername
@@ -97,23 +120,77 @@ func (c *Client) PostFile(filePath, filename, filetype, comment, overrideUsernam
 		return fmt.Errorf("failed to close multipart writer: %w", err)
 	}
 
+	return c.sendRequest(c.Profile.Endpoint, body, writer.FormDataContentType())
+}
+
+// --- Slack Provider Methods ---
+
+func (c *Client) postMessageToSlack(text, overrideUsername string) error {
+	username := c.Profile.Username
+	if overrideUsername != "" {
+		username = overrideUsername
+	}
+	payload := SlackMessagePayload{
+		Channel:  c.Profile.Channel,
+		Text:     text,
+		Username: username,
+	}
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal slack payload: %w", err)
+	}
+	return c.sendRequest(slackPostMessageURL, bytes.NewBuffer(jsonPayload), "application/json; charset=utf-8")
+}
+
+func (c *Client) postFileToSlack(filePath, filename, filetype, comment, overrideUsername string) error {
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	file, err := os.Open(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to open file: %w", err)
+	}
+	defer file.Close()
+
+	part, err := writer.CreateFormFile("file", filepath.Base(filename))
+	if err != nil {
+		return fmt.Errorf("failed to create form file: %w", err)
+	}
+	if _, err = io.Copy(part, file); err != nil {
+		return fmt.Errorf("failed to copy file to buffer: %w", err)
+	}
+
+	_ = writer.WriteField("channels", c.Profile.Channel)
+	if comment != "" {
+		_ = writer.WriteField("initial_comment", comment)
+	}
+	if filename != "" {
+		_ = writer.WriteField("filename", filename)
+	}
+	if filetype != "" {
+		_ = writer.WriteField("filetype", filetype)
+	}
+
+	if err := writer.Close(); err != nil {
+		return fmt.Errorf("failed to close multipart writer: %w", err)
+	}
+
+	return c.sendRequest(slackFileUploadURL, body, writer.FormDataContentType())
+}
+
+// --- Shared Methods ---
+
+func (c *Client) sendRequest(url string, body io.Reader, contentType string) error {
 	if c.NoOp {
-		fmt.Printf("---\n")
-		fmt.Printf("Profile: %s\n", c.Profile.Endpoint) // Simplified profile name for now
-		fmt.Printf("File: %s\n", filePath)
-		fmt.Printf("Filename: %s\n", filename)
-		fmt.Printf("Comment: %s\n", comment)
-		fmt.Printf("Filetype: %s\n", filetype)
-		fmt.Printf("-----\n")
+		fmt.Printf("--- NOOP: Dry run ---\n")
+		fmt.Printf("Provider: %s\n", c.Profile.Provider)
+		fmt.Printf("URL: %s\n", url)
+		fmt.Printf("Content-Type: %s\n", contentType)
+		fmt.Printf("---------------------\n")
 		return nil
 	}
 
-	return c.sendRequest(body, writer.FormDataContentType())
-}
-
-// sendRequest is a helper to send the actual HTTP request.
-func (c *Client) sendRequest(body io.Reader, contentType string) error {
-	req, err := http.NewRequest("POST", c.Profile.Endpoint, body)
+	req, err := http.NewRequest("POST", url, body)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}

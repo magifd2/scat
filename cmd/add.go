@@ -2,15 +2,17 @@ package cmd
 
 import (
 	"fmt"
+	"syscall"
 
 	"github.com/magifd2/scat/internal/config"
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 )
 
 var addCmd = &cobra.Command{
 	Use:   "add [profile_name]",
 	Short: "Add a new profile",
-	Long:  `Adds a new profile. If no specific parameters are provided, it copies settings from the default profile.`, 
+	Long:  `Adds a new profile. You will be prompted to enter the authentication token securely.`, 
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		profileName := args[0]
@@ -24,22 +26,27 @@ var addCmd = &cobra.Command{
 			return fmt.Errorf("Error: Profile '%s' already exists", profileName)
 		}
 
-		newProfile := config.Profile{}
-		if !cmd.Flags().Changed("endpoint") && !cmd.Flags().Changed("token") && !cmd.Flags().Changed("username") {
-			defaultProfile, ok := cfg.Profiles["default"]
-			if !ok {
-				return fmt.Errorf("Error: Default profile not found. Cannot create new profile without parameters.")
-			}
-			newProfile = defaultProfile
-		} else {
-			endpoint, _ := cmd.Flags().GetString("endpoint")
-			token, _ := cmd.Flags().GetString("token")
-			username, _ := cmd.Flags().GetString("username")
+		provider, _ := cmd.Flags().GetString("provider")
+		endpoint, _ := cmd.Flags().GetString("endpoint")
+		channel, _ := cmd.Flags().GetString("channel")
+		username, _ := cmd.Flags().GetString("username")
 
-			newProfile.Endpoint = endpoint
-			newProfile.Token = token
-			newProfile.Username = username
+		newProfile := config.Profile{
+			Provider: provider,
+			Endpoint: endpoint,
+			Channel:  channel,
+			Username: username,
 		}
+
+		// Prompt for token securely
+		fmt.Print("Enter Token (will not be displayed): ")
+	
+tokenBytes, err := term.ReadPassword(int(syscall.Stdin))
+		if err != nil {
+			return fmt.Errorf("failed to read token: %w", err)
+		}
+		fmt.Println()
+		newProfile.Token = string(tokenBytes)
 
 		cfg.Profiles[profileName] = newProfile
 
@@ -48,7 +55,6 @@ var addCmd = &cobra.Command{
 		}
 
 		fmt.Printf("Profile '%s' added.\n", profileName)
-		fmt.Printf("To switch to the new profile, run: scat profile use %s\n", profileName)
 		return nil
 	},
 }
@@ -56,7 +62,8 @@ var addCmd = &cobra.Command{
 func init() {
 	profileCmd.AddCommand(addCmd)
 
-	addCmd.Flags().String("endpoint", "", "API endpoint URL")
-	addCmd.Flags().String("token", "", "Authentication token")
+	addCmd.Flags().String("provider", "generic", "Provider type: 'generic' or 'slack'")
+	addCmd.Flags().String("endpoint", "", "API endpoint URL (for generic provider)")
+	addCmd.Flags().String("channel", "", "Channel name (for slack provider)")
 	addCmd.Flags().String("username", "", "Default username for posts")
 }

@@ -19,7 +19,9 @@ type Config struct {
 
 // Profile defines the settings for a specific destination endpoint.
 type Profile struct {
-	Endpoint string `json:"endpoint,omitempty"`
+	Provider string `json:"provider,omitempty"` // "generic" or "slack"
+	Endpoint string `json:"endpoint,omitempty"` // Used by "generic" provider
+	Channel  string `json:"channel,omitempty"`  // Used by "slack" provider
 	Token    string `json:"token,omitempty"`
 	Username string `json:"username,omitempty"`
 }
@@ -40,6 +42,7 @@ func Load() (*Config, error) {
 				CurrentProfile: "default",
 				Profiles: map[string]Profile{
 					"default": {
+						Provider: "generic",
 						Endpoint: "https://example.com/hooks/xxxx-xxxx",
 						Token:    "YOUR_STATIC_TOKEN_HERE",
 						Username: "scat-bot",
@@ -53,6 +56,14 @@ func Load() (*Config, error) {
 	var cfg Config
 	if err := json.Unmarshal(data, &cfg); err != nil {
 		return nil, err
+	}
+
+	// Set default provider for profiles that don't have one for backward compatibility
+	for name, profile := range cfg.Profiles {
+		if profile.Provider == "" {
+			profile.Provider = "generic"
+			cfg.Profiles[name] = profile
+		}
 	}
 
 	return &cfg, nil
