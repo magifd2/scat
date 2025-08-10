@@ -34,63 +34,82 @@ var postCmd = &cobra.Command{
 			return fmt.Errorf("profile '%s' not found", profileName)
 		}
 
+		// Get optional flags
+		username, _ := cmd.Flags().GetString("username")
+		tee, _ := cmd.Flags().GetBool("tee")
+		noop, _ := cmd.Flags().GetBool("noop")
+
 		// Create client
-		 apiClient := client.NewClient(profile)
+		apiClient := client.NewClient(profile, noop)
 
 		// Handle stream
 		stream, _ := cmd.Flags().GetBool("stream")
 		if stream {
-			return handleStream(apiClient, profileName)
+			if len(args) > 0 {
+				return fmt.Errorf("cannot use file argument with --stream flag")
+			}
+			return handleStream(apiClient, profileName, username, tee)
 		}
 
-		// Handle file/stdin post
-		var content string
+		// Handle file post or stdin post
 		if len(args) > 0 {
-			// Read from file
+			// Post from file (multipart)
 			filePath := args[0]
-			fileContent, err := os.ReadFile(filePath)
-			if err != nil {
-				return fmt.Errorf("failed to read file %s: %w", filePath, err)
+			filename, _ := cmd.Flags().GetString("filename")
+			filetype, _ := cmd.Flags().GetString("filetype")
+			comment, _ := cmd.Flags().GetString("comment")
+
+			if filename == "" {
+				filename = filePath
 			}
-			content = string(fileContent)
+
+			if err := apiClient.PostFile(filePath, filename, filetype, comment, username); err != nil {
+				return fmt.Errorf("failed to post file: %w", err)
+			}
+			fmt.Printf("File '%s' posted successfully to profile '%s'.\n", filename, profileName)
+
 		} else {
-			// Read from stdin
+			// Post from stdin (json)
 			stat, _ := os.Stdin.Stat()
 			if (stat.Mode() & os.ModeCharDevice) == 0 {
 				stdinContent, err := io.ReadAll(os.Stdin)
 				if err != nil {
 					return fmt.Errorf("failed to read from stdin: %w", err)
 				}
-				content = string(stdinContent)
+				content := string(stdinContent)
+				if tee {
+					fmt.Print(content)
+				}
+				if err := apiClient.PostMessage(content, username); err != nil {
+					return fmt.Errorf("failed to post message: %w", err)
+				}
+				fmt.Printf("Message posted successfully to profile '%s'.\n", profileName)
 			} else {
 				return fmt.Errorf("no file specified and no data from stdin")
 			}
 		}
 
-		// Post message
-		if err := apiClient.PostMessage(content); err != nil {
-			return fmt.Errorf("failed to post message: %w", err)
-		}
-
-		fmt.Printf("Message posted successfully to profile '%s'.\n", profileName)
 		return nil
 	},
 }
 
-func handleStream(apiClient *client.Client, profileName string) error {
+func handleStream(apiClient *client.Client, profileName, overrideUsername string, tee bool) error {
 	fmt.Printf("Starting stream to profile '%s'. Press Ctrl+C to exit.\n", profileName)
 	lines := make(chan string)
 	scanner := bufio.NewScanner(os.Stdin)
 
-	// Read lines from stdin in a separate goroutine
 	go func() {
 		for scanner.Scan() {
-			lines <- scanner.Text()
+			line := scanner.Text()
+			if tee {
+				fmt.Println(line)
+			}
+			lines <- line
 		}
 		close(lines)
 	}()
 
-	var buffer []string	
+	var buffer []string
 	ticker := time.NewTicker(3 * time.Second)
 	defer ticker.Stop()
 
@@ -98,10 +117,9 @@ func handleStream(apiClient *client.Client, profileName string) error {
 		select {
 		case line, ok := <-lines:
 			if !ok {
-				// Post any remaining lines in the buffer before exiting
 				if len(buffer) > 0 {
 					fmt.Printf("Flushing %d remaining lines...\n", len(buffer))
-					if err := apiClient.PostMessage(strings.Join(buffer, "\n")); err != nil {
+					if err := apiClient.PostMessage(strings.Join(buffer, "\n"), overrideUsername); err != nil {
 						fmt.Fprintf(os.Stderr, "Error flushing remaining lines: %v\n", err)
 					}
 				}
@@ -111,11 +129,11 @@ func handleStream(apiClient *client.Client, profileName string) error {
 			buffer = append(buffer, line)
 		case <-ticker.C:
 			if len(buffer) > 0 {
-				if err := apiClient.PostMessage(strings.Join(buffer, "\n")); err != nil {
+				if err := apiClient.PostMessage(strings.Join(buffer, "\n"), overrideUsername); err != nil {
 					fmt.Fprintf(os.Stderr, "Error posting message: %v\n", err)
 				}
 				fmt.Printf("Posted %d lines to profile '%s'.\n", len(buffer), profileName)
-				buffer = nil // Clear buffer after posting
+				buffer = nil
 			}
 		}
 	}
@@ -126,6 +144,10 @@ func init() {
 
 	postCmd.Flags().StringP("channel", "c", "", "Profile name to use for this post (overrides the default)")
 	postCmd.Flags().BoolP("stream", "s", false, "Stream messages from stdin continuously")
-	postCmd.Flags().StringP("comment", "m", "", "A comment to post with the content (not yet implemented)")
-	postCmd.Flags().StringP("filename", "n", "", "Filename for the upload (not yet implemented)")
+	postCmd.Flags().StringP("comment", "m", "", "A comment to post with the file")
+	postCmd.Flags().StringP("filename", "n", "", "Filename for the upload")
+	postCmd.Flags().String("filetype", "", "Filetype for syntax highlighting")
+	postCmd.Flags().StringP("username", "u", "", "Username to post as (overrides the profile default)")
+	postCmd.Flags().BoolP("tee", "t", false, "Print stdin to screen before posting")
+	postCmd.Flags().Bool("noop", false, "Skip posting to endpoint, for testing purposes")
 }
