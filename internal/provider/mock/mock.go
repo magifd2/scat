@@ -23,23 +23,22 @@ func (p *Provider) Capabilities() provider.Capabilities {
 	return provider.Capabilities{
 		CanListChannels: false,
 		CanPostFile:     true, // Mock can "handle" file posts
-		CanUseThreads:   false,
 		CanUseIconEmoji: false,
 	}
 }
 
 // PostMessage prints a mock message.
-func (p *Provider) PostMessage(text, overrideUsername, iconEmoji string, thread bool, threadTS string) (string, error) {
-	fmt.Println("--- [MOCK] PostMessage called ---")
+func (p *Provider) PostMessage(text, overrideUsername, iconEmoji string) error {
+	fmt.Println("-- [MOCK] PostMessage called --")
 	fmt.Printf("Text: %s\n", text)
-	return "", nil
+	return nil
 }
 
 // PostFile prints a mock message.
-func (p *Provider) PostFile(filePath, filename, filetype, comment, overrideUsername, iconEmoji string, thread bool, threadTS string) (string, error) {
-	fmt.Println("--- [MOCK] PostFile called ---")
+func (p *Provider) PostFile(filePath, filename, filetype, comment, overrideUsername, iconEmoji string) error {
+	fmt.Println("-- [MOCK] PostFile called --")
 	fmt.Printf("File: %s\n", filePath)
-	return "", nil
+	return nil
 }
 
 // ListChannels returns an error as it's not supported.

@@ -36,7 +36,6 @@ func (p *Provider) Capabilities() provider.Capabilities {
 	return provider.Capabilities{
 		CanListChannels: true,
 		CanPostFile:     true,
-		CanUseThreads:   true,
 		CanUseIconEmoji: true,
 	}
 }
@@ -68,7 +67,7 @@ type apiResponse struct {
 	} `json:"response_metadata"`
 }
 
-func (p *Provider) PostMessage(text, overrideUsername, iconEmoji string, thread bool, threadTS string) (string, error) {
+func (p *Provider) PostMessage(text, overrideUsername, iconEmoji string) error {
 	username := p.Profile.Username
 	if overrideUsername != "" {
 		username = overrideUsername
@@ -79,33 +78,31 @@ func (p *Provider) PostMessage(text, overrideUsername, iconEmoji string, thread 
 		Username:  username,
 		IconEmoji: iconEmoji,
 	}
-	if thread && threadTS != "" {
-		payload.ThreadTS = threadTS
-	}
 
 	jsonPayload, err := json.Marshal(payload)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal slack payload: %w", err)
+		return fmt.Errorf("failed to marshal slack payload: %w", err)
 	}
-	return p.sendRequest(postMessageURL, bytes.NewBuffer(jsonPayload), "application/json; charset=utf-8")
+	_, err = p.sendRequest(postMessageURL, bytes.NewBuffer(jsonPayload), "application/json; charset=utf-8")
+	return err
 }
 
-func (p *Provider) PostFile(filePath, filename, filetype, comment, overrideUsername, iconEmoji string, thread bool, threadTS string) (string, error) {
+func (p *Provider) PostFile(filePath, filename, filetype, comment, overrideUsername, iconEmoji string) error {
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 
 	file, err := os.Open(filePath)
 	if err != nil {
-		return "", fmt.Errorf("failed to open file: %w", err)
+		return fmt.Errorf("failed to open file: %w", err)
 	}
 	defer file.Close()
 
 	part, err := writer.CreateFormFile("file", filepath.Base(filename))
 	if err != nil {
-		return "", fmt.Errorf("failed to create form file: %w", err)
+		return fmt.Errorf("failed to create form file: %w", err)
 	}
 	if _, err = io.Copy(part, file); err != nil {
-		return "", fmt.Errorf("failed to copy file to buffer: %w", err)
+		return fmt.Errorf("failed to copy file to buffer: %w", err)
 	}
 
 	_ = writer.WriteField("channels", p.Profile.Channel)
@@ -118,15 +115,13 @@ func (p *Provider) PostFile(filePath, filename, filetype, comment, overrideUsern
 	if filetype != "" {
 		_ = writer.WriteField("filetype", filetype)
 	}
-	if thread && threadTS != "" {
-		_ = writer.WriteField("thread_ts", threadTS)
-	}
 
 	if err := writer.Close(); err != nil {
-		return "", fmt.Errorf("failed to close multipart writer: %w", err)
+		return fmt.Errorf("failed to close multipart writer: %w", err)
 	}
 
-	return p.sendRequest(fileUploadURL, body, writer.FormDataContentType())
+	_, err = p.sendRequest(fileUploadURL, body, writer.FormDataContentType())
+	return err
 }
 
 func (p *Provider) ListChannels() ([]string, error) {
@@ -170,7 +165,7 @@ func (p *Provider) ListChannels() ([]string, error) {
 		for _, ch := range listResp.Channels {
 			allChannels = append(allChannels, "#"+ch.Name)
 		}
-		
+
 		cursor = listResp.ResponseMetadata.NextCursor
 		if cursor == "" {
 			break
@@ -218,6 +213,7 @@ func (p *Provider) sendRequest(url string, body io.Reader, contentType string) (
 		return "", fmt.Errorf("slack API error: %s", slackResp.Error)
 	}
 
+	// Return timestamp for potential future use, but the interface only returns error now.
 	if slackResp.TS != "" {
 		return slackResp.TS, nil
 	}

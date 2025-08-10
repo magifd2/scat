@@ -4,7 +4,6 @@ package provider
 type Capabilities struct {
 	CanListChannels bool // Whether the provider can list channels.
 	CanPostFile     bool // Whether the provider can post files.
-	CanUseThreads   bool // Whether the provider supports threaded messages.
 	CanUseIconEmoji bool // Whether the provider supports custom icon emojis.
 }
 
@@ -14,10 +13,10 @@ type Interface interface {
 	Capabilities() Capabilities
 
 	// PostMessage sends a text-based message.
-	PostMessage(text, overrideUsername, iconEmoji string, thread bool, threadTS string) (string, error)
+	PostMessage(text, overrideUsername, iconEmoji string) error
 
 	// PostFile sends a file.
-	PostFile(filePath, filename, filetype, comment, overrideUsername, iconEmoji string, thread bool, threadTS string) (string, error)
+	PostFile(filePath, filename, filetype, comment, overrideUsername, iconEmoji string) error
 
 	// ListChannels lists available channels for the provider.
 	ListChannels() ([]string, error)

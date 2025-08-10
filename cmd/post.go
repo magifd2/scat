@@ -13,13 +13,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Holds the timestamp of the current thread for the lifetime of the command execution.
-var currentThreadTS string
-
 var postCmd = &cobra.Command{
-	Use:   "post [file]",
-	Short: "Post content from a file or stdin to a configured endpoint",
-	Long:  `Posts content to the destination specified in the active profile. Content can be read from a file or from standard input if no file is specified.`,
+	Use:   "post [message text]",
+	Short: "Post a text message from an argument, file, or stdin",
+	Long:  `Posts a text message. The message content is sourced in the following order of precedence: 1. Command-line argument. 2. --from-file flag. 3. Standard input.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Load config
 		cfg, err := config.Load()
@@ -28,7 +25,7 @@ var postCmd = &cobra.Command{
 		}
 
 		// Determine profile
-		profileName, _ := cmd.Flags().GetString("channel")
+		profileName, _ := cmd.Flags().GetString("profile")
 		if profileName == "" {
 			profileName = cfg.CurrentProfile
 		}
@@ -40,9 +37,15 @@ var postCmd = &cobra.Command{
 		// Get optional flags
 		username, _ := cmd.Flags().GetString("username")
 		iconEmoji, _ := cmd.Flags().GetString("iconemoji")
-		thread, _ := cmd.Flags().GetBool("thread")
+		channel, _ := cmd.Flags().GetString("channel")
 		tee, _ := cmd.Flags().GetBool("tee")
 		noop, _ := cmd.Flags().GetBool("noop")
+		fromFile, _ := cmd.Flags().GetString("from-file")
+
+		// Override channel from profile if flag is set
+		if channel != "" {
+			profile.Channel = channel
+		}
 
 		// Get provider instance
 		prov, err := GetProvider(profile, noop)
@@ -53,51 +56,30 @@ var postCmd = &cobra.Command{
 		// Handle stream
 		stream, _ := cmd.Flags().GetBool("stream")
 		if stream {
-			if len(args) > 0 {
-				return fmt.Errorf("cannot use file argument with --stream flag")
+			// Stream only works with stdin
+			if len(args) > 0 || fromFile != "" {
+				return fmt.Errorf("cannot use arguments or --from-file with --stream flag")
 			}
-			return handleStream(prov, profileName, username, iconEmoji, thread, tee)
+			return handleStream(prov, profileName, username, iconEmoji, tee)
 		}
 
-		// Handle file post or stdin post
+		// Determine message content from args, file, or stdin
+		var content string
 		if len(args) > 0 {
-			// Post from file (multipart)
-			filePath := args[0]
-
-			// Check file size before proceeding
-			fileInfo, err := os.Stat(filePath)
+			content = strings.Join(args, " ")
+		} else if fromFile != "" {
+			fileContent, err := os.ReadFile(fromFile)
 			if err != nil {
-				return fmt.Errorf("failed to get file info: %w", err)
+				return fmt.Errorf("failed to read from file %s: %w", fromFile, err)
 			}
-			if profile.Limits.MaxFileSizeBytes > 0 && fileInfo.Size() > profile.Limits.MaxFileSizeBytes {
-				return fmt.Errorf("file size (%d bytes) exceeds the configured limit (%d bytes)", fileInfo.Size(), profile.Limits.MaxFileSizeBytes)
-			}
-
-			filename, _ := cmd.Flags().GetString("filename")
-			filetype, _ := cmd.Flags().GetString("filetype")
-			comment, _ := cmd.Flags().GetString("comment")
-
-			if filename == "" {
-				filename = filePath
-			}
-
-			respTS, err := prov.PostFile(filePath, filename, filetype, comment, username, iconEmoji, thread, currentThreadTS)
-			if err != nil {
-				return fmt.Errorf("failed to post file: %w", err)
-			}
-			if thread && currentThreadTS == "" {
-				currentThreadTS = respTS
-			}
-			fmt.Printf("File '%s' posted successfully to profile '%s'.\n", filename, profileName)
-
+			content = string(fileContent)
 		} else {
-			// Post from stdin (json)
 			stat, _ := os.Stdin.Stat()
 			if (stat.Mode() & os.ModeCharDevice) == 0 {
 				limit := profile.Limits.MaxStdinSizeBytes
 				var limitedReader io.Reader = os.Stdin
 				if limit > 0 {
-					limitedReader = io.LimitReader(os.Stdin, limit+1) // Read one extra byte to check for truncation
+					limitedReader = io.LimitReader(os.Stdin, limit+1)
 				}
 				stdinContent, err := io.ReadAll(limitedReader)
 				if err != nil {
@@ -106,29 +88,27 @@ var postCmd = &cobra.Command{
 				if limit > 0 && int64(len(stdinContent)) > limit {
 					return fmt.Errorf("stdin size exceeds the configured limit (%d bytes)", limit)
 				}
-
-				content := string(stdinContent)
-				if tee {
-					fmt.Print(content)
-				}
-				respTS, err := prov.PostMessage(content, username, iconEmoji, thread, currentThreadTS)
-				if err != nil {
-					return fmt.Errorf("failed to post message: %w", err)
-				}
-				if thread && currentThreadTS == "" {
-					currentThreadTS = respTS
-				}
-				fmt.Printf("Message posted successfully to profile '%s'.\n", profileName)
+				content = string(stdinContent)
 			} else {
-				return fmt.Errorf("no file specified and no data from stdin")
+				return fmt.Errorf("no message content provided via argument, --from-file, or stdin")
 			}
 		}
+
+		if tee && fromFile == "" && len(args) == 0 { // only tee stdin
+			fmt.Print(content)
+		}
+
+		// Post the message
+		if err := prov.PostMessage(content, username, iconEmoji); err != nil {
+			return fmt.Errorf("failed to post message: %w", err)
+		}
+		fmt.Printf("Message posted successfully to profile '%s'.\n", profileName)
 
 		return nil
 	},
 }
 
-func handleStream(prov provider.Interface, profileName, overrideUsername, iconEmoji string, thread, tee bool) error {
+func handleStream(prov provider.Interface, profileName, overrideUsername, iconEmoji string, tee bool) error {
 	fmt.Printf("Starting stream to profile '%s'. Press Ctrl+C to exit.\n", profileName)
 	lines := make(chan string)
 	scanner := bufio.NewScanner(os.Stdin)
@@ -154,12 +134,8 @@ func handleStream(prov provider.Interface, profileName, overrideUsername, iconEm
 			if !ok {
 				if len(buffer) > 0 {
 					fmt.Printf("Flushing %d remaining lines...\n", len(buffer))
-					respTS, err := prov.PostMessage(strings.Join(buffer, "\n"), overrideUsername, iconEmoji, thread, currentThreadTS)
-					if err != nil {
+					if err := prov.PostMessage(strings.Join(buffer, "\n"), overrideUsername, iconEmoji); err != nil {
 						fmt.Fprintf(os.Stderr, "Error flushing remaining lines: %v\n", err)
-					}
-					if thread && currentThreadTS == "" {
-						currentThreadTS = respTS
 					}
 				}
 				fmt.Println("Stream finished.")
@@ -168,12 +144,8 @@ func handleStream(prov provider.Interface, profileName, overrideUsername, iconEm
 			buffer = append(buffer, line)
 		case <-ticker.C:
 			if len(buffer) > 0 {
-				respTS, err := prov.PostMessage(strings.Join(buffer, "\n"), overrideUsername, iconEmoji, thread, currentThreadTS)
-				if err != nil {
+				if err := prov.PostMessage(strings.Join(buffer, "\n"), overrideUsername, iconEmoji); err != nil {
 					fmt.Fprintf(os.Stderr, "Error posting message: %v\n", err)
-				}
-				if thread && currentThreadTS == "" {
-					currentThreadTS = respTS
 				}
 				fmt.Printf("Posted %d lines to profile '%s'.\n", len(buffer), profileName)
 				buffer = nil
@@ -185,14 +157,12 @@ func handleStream(prov provider.Interface, profileName, overrideUsername, iconEm
 func init() {
 	rootCmd.AddCommand(postCmd)
 
-	postCmd.Flags().StringP("channel", "c", "", "Profile name to use for this post (overrides the default)")
+	postCmd.Flags().StringP("profile", "p", "", "Profile to use for this post")
+	postCmd.Flags().StringP("channel", "c", "", "Override the destination channel for this post")
+	postCmd.Flags().String("from-file", "", "Read message body from a file")
 	postCmd.Flags().BoolP("stream", "s", false, "Stream messages from stdin continuously")
-	postCmd.Flags().StringP("comment", "m", "", "A comment to post with the file")
-	postCmd.Flags().StringP("filename", "n", "", "Filename for the upload")
-	postCmd.Flags().String("filetype", "", "Filetype for syntax highlighting")
-	postCmd.Flags().StringP("username", "u", "", "Username to post as (overrides the profile default)")
 	postCmd.Flags().BoolP("tee", "t", false, "Print stdin to screen before posting")
-	postCmd.Flags().Bool("noop", false, "Skip posting to endpoint, for testing purposes")
+	postCmd.Flags().StringP("username", "u", "", "Override the username for this post")
+	postCmd.Flags().Bool("noop", false, "Dry run, do not actually post")
 	postCmd.Flags().StringP("iconemoji", "i", "", "Icon emoji to use for the post (slack provider only)")
-	postCmd.Flags().Bool("thread", false, "Post as a reply in a thread (slack provider only)")
 }
