@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -60,8 +61,20 @@ tokenBytes, err := term.ReadPassword(int(syscall.Stdin))
 			profile.Token = value
 		case "username":
 			profile.Username = value
+		case "limits.max_file_size_bytes":
+			size, err := strconv.ParseInt(value, 10, 64)
+			if err != nil {
+				return fmt.Errorf("invalid integer value for %s: %s", key, value)
+			}
+			profile.Limits.MaxFileSizeBytes = size
+		case "limits.max_stdin_size_bytes":
+			size, err := strconv.ParseInt(value, 10, 64)
+			if err != nil {
+				return fmt.Errorf("invalid integer value for %s: %s", key, value)
+			}
+			profile.Limits.MaxStdinSizeBytes = size
 		default:
-			availableKeys := []string{"provider", "endpoint", "channel", "token", "username"}
+			availableKeys := []string{"provider", "endpoint", "channel", "token", "username", "limits.max_file_size_bytes", "limits.max_stdin_size_bytes"}
 			return fmt.Errorf("unknown configuration key '%s'.\nAvailable keys: %s", key, strings.Join(availableKeys, ", "))
 		}
 

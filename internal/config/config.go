@@ -24,10 +24,24 @@ type Profile struct {
 	Channel  string `json:"channel,omitempty"`  // Used by "slack" provider
 	Token    string `json:"token,omitempty"`
 	Username string `json:"username,omitempty"`
+	Limits   Limits `json:"limits,omitempty"`
+}
+
+// Limits defines the size limits for inputs.
+type Limits struct {
+	MaxFileSizeBytes int64 `json:"max_file_size_bytes,omitempty"`
+	MaxStdinSizeBytes int64 `json:"max_stdin_size_bytes,omitempty"`
+}
+
+// newDefaultLimits returns a Limits struct with default values.
+func newDefaultLimits() Limits {
+	return Limits{
+		MaxFileSizeBytes: 1024 * 1024 * 1024, // 1 GB
+		MaxStdinSizeBytes: 10 * 1024 * 1024,  // 10 MB
+	}
 }
 
 // Load reads the configuration file from the user's config directory.
-// If the file does not exist, it returns a default configuration.
 func Load() (*Config, error) {
 	configPath, err := GetConfigPath()
 	if err != nil {
@@ -44,6 +58,7 @@ func Load() (*Config, error) {
 					"default": {
 						Provider: "mock",
 						Channel:  "#mock-channel",
+						Limits:   newDefaultLimits(),
 					},
 				},
 			}, nil
@@ -56,12 +71,15 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
-	// Set default provider for profiles that don't have one for backward compatibility
+	// For backward compatibility, populate limits if they are not set.
 	for name, profile := range cfg.Profiles {
 		if profile.Provider == "" {
-			profile.Provider = "generic"
-			cfg.Profiles[name] = profile
+			profile.Provider = "generic" // Or mock, depending on desired behavior for old configs
 		}
+		if profile.Limits.MaxFileSizeBytes == 0 && profile.Limits.MaxStdinSizeBytes == 0 {
+			profile.Limits = newDefaultLimits()
+		}
+		cfg.Profiles[name] = profile
 	}
 
 	return &cfg, nil

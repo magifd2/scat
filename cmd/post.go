@@ -63,6 +63,16 @@ var postCmd = &cobra.Command{
 		if len(args) > 0 {
 			// Post from file (multipart)
 			filePath := args[0]
+
+			// Check file size before proceeding
+			fileInfo, err := os.Stat(filePath)
+			if err != nil {
+				return fmt.Errorf("failed to get file info: %w", err)
+			}
+			if profile.Limits.MaxFileSizeBytes > 0 && fileInfo.Size() > profile.Limits.MaxFileSizeBytes {
+				return fmt.Errorf("file size (%d bytes) exceeds the configured limit (%d bytes)", fileInfo.Size(), profile.Limits.MaxFileSizeBytes)
+			}
+
 			filename, _ := cmd.Flags().GetString("filename")
 			filetype, _ := cmd.Flags().GetString("filetype")
 			comment, _ := cmd.Flags().GetString("comment")
@@ -84,10 +94,19 @@ var postCmd = &cobra.Command{
 			// Post from stdin (json)
 			stat, _ := os.Stdin.Stat()
 			if (stat.Mode() & os.ModeCharDevice) == 0 {
-				stdinContent, err := io.ReadAll(os.Stdin)
+				limit := profile.Limits.MaxStdinSizeBytes
+				var limitedReader io.Reader = os.Stdin
+				if limit > 0 {
+					limitedReader = io.LimitReader(os.Stdin, limit+1) // Read one extra byte to check for truncation
+				}
+				stdinContent, err := io.ReadAll(limitedReader)
 				if err != nil {
 					return fmt.Errorf("failed to read from stdin: %w", err)
 				}
+				if limit > 0 && int64(len(stdinContent)) > limit {
+					return fmt.Errorf("stdin size exceeds the configured limit (%d bytes)", limit)
+				}
+
 				content := string(stdinContent)
 				if tee {
 					fmt.Print(content)

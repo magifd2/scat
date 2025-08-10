@@ -30,18 +30,23 @@ var addCmd = &cobra.Command{
 		endpoint, _ := cmd.Flags().GetString("endpoint")
 		channel, _ := cmd.Flags().GetString("channel")
 		username, _ := cmd.Flags().GetString("username")
+		maxFile, _ := cmd.Flags().GetInt64("limits-max-file-size-bytes")
+		maxStdin, _ := cmd.Flags().GetInt64("limits-max-stdin-size-bytes")
 
 		newProfile := config.Profile{
 			Provider: provider,
 			Endpoint: endpoint,
 			Channel:  channel,
 			Username: username,
+			Limits: config.Limits{
+				MaxFileSizeBytes: maxFile,
+				MaxStdinSizeBytes: maxStdin,
+			},
 		}
 
 		// Prompt for token securely
 		fmt.Print("Enter Token (will not be displayed): ")
-	
-tokenBytes, err := term.ReadPassword(int(syscall.Stdin))
+		tokenBytes, err := term.ReadPassword(int(syscall.Stdin))
 		if err != nil {
 			return fmt.Errorf("failed to read token: %w", err)
 		}
@@ -62,8 +67,10 @@ tokenBytes, err := term.ReadPassword(int(syscall.Stdin))
 func init() {
 	profileCmd.AddCommand(addCmd)
 
-	addCmd.Flags().String("provider", "generic", "Provider type: 'generic' or 'slack'")
+	addCmd.Flags().String("provider", "mock", "Provider type: 'mock' or 'slack'")
 	addCmd.Flags().String("endpoint", "", "API endpoint URL (for generic provider)")
 	addCmd.Flags().String("channel", "", "Channel name (for slack provider)")
 	addCmd.Flags().String("username", "", "Default username for posts")
+	addCmd.Flags().Int64("limits-max-file-size-bytes", 1024*1024*1024, "Max file size for uploads in bytes (1GB)")
+	addCmd.Flags().Int64("limits-max-stdin-size-bytes", 10*1024*1024, "Max size for stdin in bytes (10MB)")
 }
