@@ -5,19 +5,19 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"mime/multipart"
 	"net/http"
+	"net/url"
 	"os"
-	"path/filepath"
 
 	"github.com/magifd2/scat/internal/config"
 	"github.com/magifd2/scat/internal/provider"
 )
 
 const (
-	postMessageURL       = "https://slack.com/api/chat.postMessage"
-	fileUploadURL        = "https://slack.com/api/files.upload"
-	conversationsListURL = "https://slack.com/api/conversations.list"
+	postMessageURL         = "https://slack.com/api/chat.postMessage"
+	getUploadURLExternalURL  = "https://slack.com/api/files.getUploadURLExternal"
+	completeUploadExternalURL = "https://slack.com/api/files.completeUploadExternal"
+	conversationsListURL   = "https://slack.com/api/conversations.list"
 )
 
 // Provider implements the provider.Interface for Slack.
@@ -45,7 +45,6 @@ type messagePayload struct {
 	Text      string `json:"text"`
 	Username  string `json:"username,omitempty"`
 	IconEmoji string `json:"icon_emoji,omitempty"`
-	ThreadTS  string `json:"thread_ts,omitempty"`
 }
 
 type apiResponse struct {
@@ -67,6 +66,23 @@ type apiResponse struct {
 	} `json:"response_metadata"`
 }
 
+type getUploadURLExternalResponse struct {
+	Ok        bool   `json:"ok"`
+	Error     string `json:"error,omitempty"`
+	UploadURL string `json:"upload_url"`
+	FileID    string `json:"file_id"`
+}
+
+type fileInfo struct {
+	ID string `json:"id"`
+}
+
+type completeUploadExternalPayload struct {
+	Files          []fileInfo `json:"files"`
+	ChannelID      string     `json:"channel_id,omitempty"`
+	InitialComment string     `json:"initial_comment,omitempty"`
+}
+
 func (p *Provider) PostMessage(text, overrideUsername, iconEmoji string) error {
 	username := p.Profile.Username
 	if overrideUsername != "" {
@@ -83,45 +99,83 @@ func (p *Provider) PostMessage(text, overrideUsername, iconEmoji string) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal slack payload: %w", err)
 	}
-	_, err = p.sendRequest(postMessageURL, bytes.NewBuffer(jsonPayload), "application/json; charset=utf-8")
+	_, err = p.sendRequest("POST", postMessageURL, bytes.NewBuffer(jsonPayload), "application/json; charset=utf-8")
 	return err
 }
 
 func (p *Provider) PostFile(filePath, filename, filetype, comment, overrideUsername, iconEmoji string) error {
-	body := &bytes.Buffer{}
-	writer := multipart.NewWriter(body)
+	if p.NoOp {
+		fmt.Printf("---\n")
+		fmt.Printf("Provider: slack\n")
+		fmt.Printf("Action: Upload file %s\n", filePath)
+		fmt.Printf("-----\n")
+		return nil
+	}
 
+	// Step 1: Get Upload URL
+	fi, err := os.Stat(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to get file info: %w", err)
+	}
+
+	getURLParams := url.Values{}
+	getURLParams.Add("filename", filename)
+	getURLParams.Add("length", fmt.Sprintf("%d", fi.Size()))
+
+	getURLRespBytes, err := p.sendRequest("GET", getUploadURLExternalURL+"?"+getURLParams.Encode(), nil, "")
+	if err != nil {
+		return fmt.Errorf("step 1 (getUploadURLExternal) failed: %w", err)
+	}
+
+	var getURLResp getUploadURLExternalResponse
+	if err := json.Unmarshal(getURLRespBytes, &getURLResp); err != nil {
+		return fmt.Errorf("failed to unmarshal getUploadURLExternal response: %w", err)
+	}
+	if !getURLResp.Ok {
+		return fmt.Errorf("slack API error on getUploadURLExternal: %s", getURLResp.Error)
+	}
+
+	// Step 2: Upload file to the provided URL
 	file, err := os.Open(filePath)
 	if err != nil {
-		return fmt.Errorf("failed to open file: %w", err)
+		return fmt.Errorf("failed to open file for upload: %w", err)
 	}
 	defer file.Close()
 
-	part, err := writer.CreateFormFile("file", filepath.Base(filename))
+	uploadReq, err := http.NewRequest("POST", getURLResp.UploadURL, file)
 	if err != nil {
-		return fmt.Errorf("failed to create form file: %w", err)
+		return fmt.Errorf("failed to create upload request: %w", err)
 	}
-	if _, err = io.Copy(part, file); err != nil {
-		return fmt.Errorf("failed to copy file to buffer: %w", err)
+	uploadReq.Header.Set("Content-Type", "application/octet-stream")
+
+	httpClient := &http.Client{}
+	uploadResp, err := httpClient.Do(uploadReq)
+	if err != nil {
+		return fmt.Errorf("step 2 (upload to url) failed: %w", err)
+	}
+	defer uploadResp.Body.Close()
+	if uploadResp.StatusCode != 200 {
+		body, _ := io.ReadAll(uploadResp.Body)
+		return fmt.Errorf("upload to url failed with status %d: %s", uploadResp.StatusCode, string(body))
 	}
 
-	_ = writer.WriteField("channels", p.Profile.Channel)
-	if comment != "" {
-		_ = writer.WriteField("initial_comment", comment)
+	// Step 3: Complete the upload
+	completePayload := completeUploadExternalPayload{
+		Files:          []fileInfo{{ID: getURLResp.FileID}},
+		ChannelID:      p.Profile.Channel,
+		InitialComment: comment,
 	}
-	if filename != "" {
-		_ = writer.WriteField("filename", filename)
-	}
-	if filetype != "" {
-		_ = writer.WriteField("filetype", filetype)
-	}
-
-	if err := writer.Close(); err != nil {
-		return fmt.Errorf("failed to close multipart writer: %w", err)
+	completePayloadBytes, err := json.Marshal(completePayload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal completeUploadExternal payload: %w", err)
 	}
 
-	_, err = p.sendRequest(fileUploadURL, body, writer.FormDataContentType())
-	return err
+	_, err = p.sendRequest("POST", completeUploadExternalURL, bytes.NewBuffer(completePayloadBytes), "application/json; charset=utf-8")
+	if err != nil {
+		return fmt.Errorf("step 3 (completeUploadExternal) failed: %w", err)
+	}
+
+	return nil
 }
 
 func (p *Provider) ListChannels() ([]string, error) {
@@ -130,31 +184,13 @@ func (p *Provider) ListChannels() ([]string, error) {
 
 	for {
 		url := fmt.Sprintf("%s?cursor=%s&types=public_channel,private_channel&limit=200", conversationsListURL, cursor)
-		req, err := http.NewRequest("GET", url, nil)
+		body, err := p.sendRequest("GET", url, nil, "")
 		if err != nil {
-			return nil, fmt.Errorf("failed to create request for conversations.list: %w", err)
-		}
-
-		req.Header.Set("Authorization", "Bearer "+p.Profile.Token)
-
-		httpClient := &http.Client{}
-		resp, err := httpClient.Do(req)
-		if err != nil {
-			return nil, fmt.Errorf("failed to send request to conversations.list: %w", err)
-		}
-		defer resp.Body.Close()
-
-		bodyBytes, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read response body from conversations.list: %w", err)
-		}
-
-		if resp.StatusCode >= 400 {
-			return nil, fmt.Errorf("conversations.list request failed with status code %d: %s", resp.StatusCode, string(bodyBytes))
+			return nil, err
 		}
 
 		var listResp apiResponse
-		if err := json.Unmarshal(bodyBytes, &listResp); err != nil {
+		if err := json.Unmarshal(body, &listResp); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal conversations.list response: %w", err)
 		}
 
@@ -174,56 +210,32 @@ func (p *Provider) ListChannels() ([]string, error) {
 	return allChannels, nil
 }
 
-func (p *Provider) sendRequest(url string, body io.Reader, contentType string) (string, error) {
-	if p.NoOp {
-		fmt.Printf("---\nProvider: slack\nURL: %s\n-----\n", url)
-		return "", nil
-	}
-
-	req, err := http.NewRequest("POST", url, body)
+func (p *Provider) sendRequest(method, url string, body io.Reader, contentType string) ([]byte, error) {
+	req, err := http.NewRequest(method, url, body)
 	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
+		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("Content-Type", contentType)
+	if contentType != "" {
+		req.Header.Set("Content-Type", contentType)
+	}
 	req.Header.Set("Authorization", "Bearer "+p.Profile.Token)
 
 	httpClient := &http.Client{}
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("failed to send request: %w", err)
+		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("failed to read response body: %w", err)
+		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
 	if resp.StatusCode >= 400 {
-		return "", fmt.Errorf("request failed with status code %d: %s", resp.StatusCode, string(bodyBytes))
+		return nil, fmt.Errorf("request failed with status code %d: %s", resp.StatusCode, string(bodyBytes))
 	}
 
-	var slackResp apiResponse
-	if err := json.Unmarshal(bodyBytes, &slackResp); err != nil {
-		return "", fmt.Errorf("failed to unmarshal slack response: %w", err)
-	}
-
-	if !slackResp.Ok {
-		return "", fmt.Errorf("slack API error: %s", slackResp.Error)
-	}
-
-	// Return timestamp for potential future use, but the interface only returns error now.
-	if slackResp.TS != "" {
-		return slackResp.TS, nil
-	}
-	if slackResp.File.Shares.Public != nil {
-		for _, shares := range slackResp.File.Shares.Public {
-			if len(shares) > 0 {
-				return shares[0].TS, nil
-			}
-		}
-	}
-
-	return "", nil
+	return bodyBytes, nil
 }
