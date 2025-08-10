@@ -1,70 +1,19 @@
-# 開発計画
+# Development Plan
 
-## 概要
+## Project Status
 
-`slackcat` のコア機能（標準入力やファイルからのコンテンツ投稿）を参考にしつつ、`llm-cli`のような堅牢な設定管理とCLIフレームワークを持つ、新しい汎用的なメッセージ投稿ツール `scat` を開発する。
-
-Slackへの依存をなくし、認証を簡素化し、任意のHTTPエンドポイントにメッセージを投稿できるようにする。
-
-## 1. 基本設計
-
-- **言語**: Go
-- **CLIフレームワーク**: Cobra
-- **設定ファイル**: `~/.config/scat/config.json` にてプロファイルベースで管理
-- **コアロジック**: `slackcat`のファイル/標準入力ハンドリング、ストリーミングロジックを参考に、汎用的なHTTPクライアントとして再実装
-- **認証**: プロファイルごとに静的なBearerトークンを設定ファイルに保持
-
-## 2. 開発ステップ
-
-### ステップ1: プロジェクトの初期設定
-
-- `scat` ディレクトリの作成。
-- `go mod init` によるGoモジュールの初期化。
-- `llm-cli` の `Makefile` をベースに、以下の機能を持つ `Makefile` を作成する。
-    - **`build`**: 現在のOS向けのバイナリをビルドする。
-    - **`cross-compile`**: Linux, Windows, macOS向けのクロスコンパイルを実行する。
-    - **macOSユニバーサルバイナリ対応**:
-        - `amd64` と `arm64` 向けのバイナリを個別にビルドする。
-        - `lipo` コマンドでバイナリを結合する。
-        - `codesign -s -` コマンドで、生成されたユニバーサルバイナリにアドホック署名を行い、改ざん検知を有効化する。
-- `.gitignore` の設定。
-
-### ステップ2: CLIフレームワークと設定管理の実装
-
-- Cobraフレームワークを導入し、`scat post` および `scat profile` コマンドの雛形を作成。
-- `llm-cli` の `internal/config` パッケージを参考に、`config.json` の読み書きを行う設定管理機能を実装。
-
-### ステップ3: コア機能（メッセージ投稿）の実装
-
-- `slackcat` の `main.go`, `slackcat.go` を参考に、ファイル/標準入力のハンドリング機能を実装。
-- 指定されたエンドポイントにPOSTリクエストを送信するHTTPクライアントを実装。
-- ストリーミング入力に対応するためのキューイングと定期的なPOST処理を実装。
-
-### ステップ4: 機能の統合と仕上げ
-
-- `scat post` コマンドにコア機能を統合。
-- `scat profile` の各サブコマンド（add, setなど）を完全に実装。
-- コマンドラインフラグ（`--channel`, `--stream`等）の処理を実装。
-
-### ステップ5: ドキュメント作成
-
-- `README.md`: ツールの概要、インストール方法、基本的な使い方を記述。
-- `README.ja.md`: READMEの日本語版。
-- `BUILD.md`: ビルド手順の詳細を記述。
+Initial development is complete as of `v0.1.1`. The application provides a CLI for posting text messages and uploading files, with a primary focus on supporting Slack. The architecture has been refactored to use a provider-based model to easily support different services in the future.
 
 ---
 
-## 将来の改善案（TODO）
+## Future Improvements (TODO)
 
-### 1. パラメータの構造体化による疎結合リファクタリング
+### 1. Loosely Coupled Refactoring via Parameter Structs
 
-- **現状の課題**: `provider.Interface`の各メソッド（`PostMessage`など）が、特定のプロバイダー（`slack`）でしか使わない引数（`iconEmoji`など）を持っており、インターフェースの責務が曖昧になっている（Leaky Abstraction）。また、`cmd`層がプロバイダー固有のオプションを知っている状態は、結合度がやや高い。
-- **改善案**: メソッドに渡す引数を、それぞれ`PostMessageParams`のような専用の構造体にまとめる。プロバイダーは、その構造体の中から自身が解釈できるフィールドだけを利用する。これにより、コマンド層とプロバイダー層の結合をさらに疎にし、保守性と拡張性を向上させる。
+-   **Current Issue**: The `provider.Interface` methods (e.g., `PostMessage`) take arguments like `iconEmoji` that are only used by specific providers (`slack`). This is a form of leaky abstraction, and the command layer is still loosely aware of provider-specific options.
+-   **Proposed Improvement**: Refactor the method signatures to accept a parameter struct (e.g., `PostMessage(params PostMessageParams)`). Each provider would then be responsible for interpreting the fields within the struct that are relevant to it. This would create a cleaner interface and improve maintainability and scalability.
 
-### 2. Slack Block Kit サポート (優先度: 高)
+### 2. Slack Block Kit Support (Priority: High)
 
-- **現状の課題**: `scat post`コマンドは現在、単純なテキストメッセージしか送信できない。
-- **改善案**: Slackの「Block Kit」に対応し、画像やボタンなどを含む、よりリッチなメッセージを送信できるようにする。具体的には、以下のような実装が考えられる。
-    - `scat post`コマンドに`--block-kit`のようなフラグを追加する。
-    - このフラグには、Block KitのJSON文字列を直接渡すか、`@`プレフィックス（例: `@my-blocks.json`）でJSONファイルへのパスを渡せるようにする。
-    - `slack`プロバイダーは、`--block-kit`が指定された場合、`text`フィールドの代わりに`blocks`フィールドを持つペイロードを構築して`chat.postMessage` APIに送信する。
+-   **Current Issue**: `scat post` can only send simple text messages.
+-   **Proposed Improvement**: Add support for Slack's "Block Kit" to enable posting richer messages containing images, buttons, and other UI elements. This could be implemented via a new flag, such as `scat post --block-kit '{"blocks": ...}'` or `scat post --block-kit @my-blocks.json`, which would send a `blocks` field instead of a `text` field in the JSON payload.

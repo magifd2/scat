@@ -1,14 +1,15 @@
 # scat
 
-`scat` is a command-line interface tool for posting content from files or stdin to a configured HTTP endpoint. It is inspired by `slackcat` but generalized to work with any compatible webhook or API endpoint.
+`scat` is a command-line interface tool for posting content from files or stdin to a configured HTTP endpoint. It is inspired by `slackcat` but modernized and refactored for extensibility.
 
 ## Features
 
-*   **Flexible Input**: Pass content via command-line arguments, files, or standard input (pipes).
-*   **Streaming Support**: Continuously stream data from stdin to an endpoint.
+*   **Clear Separation of Concerns**: Send text messages with `scat post` and upload files with `scat upload`.
+*   **Flexible Input**: `post` accepts text from arguments, files, or stdin. `upload` accepts files from a path or stdin.
+*   **Provider Model**: Supports different providers (`slack`, `mock`) with a clean interface for future expansion.
+*   **Streaming Support**: Continuously stream data from stdin to an endpoint using `scat post --stream`.
 *   **Profile Management**: Save multiple endpoint configurations (URL, token, etc.) as profiles and easily switch between them.
-*   **Simple Authentication**: Uses a static Bearer Token for authentication.
-*   **Single Binary**: Easy to distribute and use.
+*   **Secure Token Input**: Interactively prompts for tokens so they don't appear in your shell history.
 
 ## Installation
 
@@ -28,41 +29,64 @@ Use the provided `Makefile` for easy installation.
 
 ## Quick Start
 
-1.  **Configure a profile:**
-
-    First, set up a destination endpoint. The default profile is created with placeholder values.
+1.  **Configure a profile for Slack:**
 
     ```bash
-    # Set the endpoint for the default profile
-    scat profile set endpoint https://your-webhook-url.com/xxxx
-
-    # Set the authentication token for the default profile
-    scat profile set token YOUR_SECRET_TOKEN
+    # Add a new profile for your Slack team
+    # You will be prompted to securely enter your Bot Token (starts with xoxb-)
+    scat profile add my-slack-workspace --provider slack --channel "#general"
     ```
 
-2.  **Post a message:**
+2.  **Send messages and upload files:**
 
     ```bash
-    # Post a simple string
-    echo "Hello, World!" | scat post
+    # Send a simple text message from an argument
+    scat post "Hello, World!"
 
-    # Post from a file
-    scat post /path/to/your/file.txt
+    # Send a multi-line message from a file
+    scat post --from-file ./my_message.txt
 
-    # Stream a log file
+    # Upload a file with a comment
+    scat upload --file ./image.png --comment "Here is the latest screenshot."
+
+    # Stream a log file as messages
     tail -f /var/log/syslog | scat post --stream
     ```
 
 ## Command Reference
 
-### `scat post`
+### Common Flags
 
-Posts content to the configured endpoint.
+These flags are available on both `post` and `upload` commands:
 
 | Flag      | Shorthand | Description                                      |
 | --------- | --------- | ------------------------------------------------ |
-| `--channel` | `-c`      | Profile to use (overrides the active default).   |
-| `--stream`  | `-s`      | Stream messages from stdin continuously.         |
+| `--profile` | `-p`      | Profile to use (overrides the active default).   |
+| `--channel` | `-c`      | Override the destination channel for this post.  |
+| `--username`| `-u`      | Override the username for this post.             |
+| `--noop`    |           | Dry run, do not actually send.                   |
+| `--iconemoji`| `-i`     | Icon emoji to use (slack provider only).         |
+
+### `scat post [message text]`
+
+Posts a text message. Input is read from arguments, `--from-file`, or stdin (in that order).
+
+| Flag        | Shorthand | Description                               |
+| ----------- | --------- | ----------------------------------------- |
+| `--from-file`|           | Read message body from a file.            |
+| `--stream`  | `-s`      | Stream messages from stdin continuously.  |
+| `--tee`     | `-t`      | Print stdin to screen while posting.      |
+
+### `scat upload`
+
+Uploads a file.
+
+| Flag       | Shorthand | Description                                      |
+| ---------- | --------- | ------------------------------------------------ |
+| `--file`   | `-f`      | **Required.** Path to the file, or `-` for stdin. |
+| `--filename`| `-n`     | Filename for the upload.                         |
+| `--filetype`|           | Filetype for syntax highlighting (e.g., `go`).   |
+| `--comment`| `-m`      | A comment to post with the file.                 |
 
 ### `scat profile`
 
@@ -73,16 +97,14 @@ Manages configuration profiles.
 | `list`     | List all available profiles.                      |
 | `use`      | Switch the active profile.                        |
 | `add`      | Add a new profile.                                |
-| `set`      | Set a value in the current profile. (keys: `endpoint`, `token`, `username`) |
+| `set`      | Set a value in the current profile.               |
 | `remove`   | Remove a profile.                                 |
 
-## Development
+### `scat channel`
 
-To build from source:
-
-```bash
-make build
-```
+| Subcommand | Description                                       |
+| ---------- | ------------------------------------------------- |
+| `list`     | List available channels for `slack` profiles.     |
 
 ## Acknowledgements
 
