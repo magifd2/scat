@@ -33,11 +33,25 @@ type Limits struct {
 	MaxStdinSizeBytes int64 `json:"max_stdin_size_bytes,omitempty"`
 }
 
-// newDefaultLimits returns a Limits struct with default values.
-func newDefaultLimits() Limits {
+// NewDefaultLimits returns a Limits struct with default values.
+func NewDefaultLimits() Limits {
 	return Limits{
 		MaxFileSizeBytes: 1024 * 1024 * 1024, // 1 GB
 		MaxStdinSizeBytes: 10 * 1024 * 1024,  // 10 MB
+	}
+}
+
+// NewDefaultConfig creates a new Config object with default settings.
+func NewDefaultConfig() *Config {
+	return &Config{
+		CurrentProfile: "default",
+		Profiles: map[string]Profile{
+			"default": {
+				Provider: "mock",
+				Channel:  "#mock-channel",
+				Limits:   NewDefaultLimits(),
+			},
+		},
 	}
 }
 
@@ -50,20 +64,7 @@ func Load() (*Config, error) {
 
 	data, err := os.ReadFile(configPath)
 	if err != nil {
-		if os.IsNotExist(err) {
-			// If the config file does not exist, return a default configuration.
-			return &Config{
-				CurrentProfile: "default",
-				Profiles: map[string]Profile{
-					"default": {
-						Provider: "mock",
-						Channel:  "#mock-channel",
-						Limits:   newDefaultLimits(),
-					},
-				},
-			}, nil
-		}
-		return nil, err
+		return nil, err // Return error if file doesn't exist or other read error
 	}
 
 	var cfg Config
@@ -74,7 +75,7 @@ func Load() (*Config, error) {
 	// For backward compatibility, populate limits if they are not set.
 	for name, profile := range cfg.Profiles {
 		if profile.Limits.MaxFileSizeBytes == 0 && profile.Limits.MaxStdinSizeBytes == 0 {
-			profile.Limits = newDefaultLimits()
+			profile.Limits = NewDefaultLimits()
 			cfg.Profiles[name] = profile
 		}
 	}

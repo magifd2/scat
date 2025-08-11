@@ -20,6 +20,11 @@ var addCmd = &cobra.Command{
 
 		cfg, err := config.Load()
 		if err != nil {
+			if os.IsNotExist(err) {
+				// If the config doesn't exist, we can't add a profile to it.
+				// Guide the user to create one first.
+				return fmt.Errorf("configuration file not found. Please run 'scat config init' to create a default configuration before adding a profile")
+			}
 			return fmt.Errorf("Error loading config: %w", err)
 		}
 

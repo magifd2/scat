@@ -17,6 +17,9 @@ var useCmd = &cobra.Command{
 		profileName := args[0]
 		cfg, err := config.Load()
 		if err != nil {
+			if os.IsNotExist(err) {
+				return fmt.Errorf("configuration file not found. Please run 'scat config init' to create a default configuration")
+			}
 			return fmt.Errorf("loading config: %w", err)
 		}
 

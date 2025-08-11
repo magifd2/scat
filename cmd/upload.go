@@ -20,6 +20,9 @@ var uploadCmd = &cobra.Command{
 		// Load config
 		cfg, err := config.Load()
 		if err != nil {
+			if os.IsNotExist(err) {
+				return fmt.Errorf("configuration file not found. Please run 'scat config init' to create a default configuration")
+			}
 			return fmt.Errorf("failed to load config: %w", err)
 		}
 

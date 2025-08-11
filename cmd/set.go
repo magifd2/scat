@@ -23,6 +23,9 @@ For the 'token' key, run 'scat profile set token' and you will be prompted to en
 
 		cfg, err := config.Load()
 		if err != nil {
+			if os.IsNotExist(err) {
+				return fmt.Errorf("configuration file not found. Please run 'scat config init' to create a default configuration")
+			}
 			return fmt.Errorf("Error loading config: %w", err)
 		}
 

@@ -15,6 +15,10 @@ var listCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		cfg, err := config.Load()
 		if err != nil {
+			if os.IsNotExist(err) {
+				fmt.Fprintln(os.Stderr, "Configuration file not found. Please run 'scat config init' to create a default configuration.")
+				os.Exit(1)
+			}
 			fmt.Fprintf(os.Stderr, "Error loading config: %v\n", err)
 			os.Exit(1)
 		}
