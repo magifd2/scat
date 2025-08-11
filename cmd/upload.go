@@ -37,8 +37,6 @@ var uploadCmd = &cobra.Command{
 		}
 
 		// Get optional flags
-		username, _ := cmd.Flags().GetString("username")
-		iconEmoji, _ := cmd.Flags().GetString("iconemoji")
 		channel, _ := cmd.Flags().GetString("channel")
 		filePath, _ := cmd.Flags().GetString("file")
 
@@ -96,7 +94,7 @@ var uploadCmd = &cobra.Command{
 			}
 		}
 
-		if err := prov.PostFile(filePath, filename, filetype, comment, username, iconEmoji); err != nil {
+		if err := prov.PostFile(filePath, filename, filetype, comment, "", ""); err != nil {
 			return fmt.Errorf("failed to post file: %w", err)
 		}
 		if !appCtx.Silent {
@@ -118,6 +116,4 @@ func init() {
 	uploadCmd.Flags().StringP("comment", "m", "", "A comment to post with the file")
 	uploadCmd.Flags().StringP("filename", "n", "", "Filename for the upload")
 	uploadCmd.Flags().String("filetype", "", "Filetype for syntax highlighting")
-	uploadCmd.Flags().StringP("username", "u", "", "Override the username for this upload")
-	uploadCmd.Flags().StringP("iconemoji", "i", "", "Icon emoji to use for the post (slack provider only)")
 }
