@@ -64,86 +64,88 @@ Here are some common ways to use `scat`.
 ### Posting Text Messages (`post`)
 
 -   **From an argument**:
-
-    ```bash
-    scat post "Hello from the command line!"
-    ```
+    `scat post "Hello from the command line!"`
 
 -   **From standard input (pipe)**:
-
-    ```bash
-    echo "This message was piped." | scat post
-    ```
-
--   **From a file**:
-
-    ```bash
-    scat post --from-file ./message.txt
-    ```
+    `echo "This message was piped." | scat post`
 
 -   **Streaming from standard input**:
-
-    This is useful for monitoring logs. `scat` will buffer lines and post them every few seconds.
-
-    ```bash
-    tail -f /var/log/system.log | scat post --stream
-    ```
+    `tail -f /var/log/system.log | scat post --stream`
 
 ### Uploading Files (`upload`)
 
 -   **Upload a file from a path**:
-
-    ```bash
-    scat upload --file ./report.pdf
-    ```
+    `scat upload --file ./report.pdf`
 
 -   **Upload with a comment**:
-
-    ```bash
-    scat upload --file ./screenshot.png -m "Here is the screenshot you requested."
-    ```
+    `scat upload --file ./screenshot.png -m "Here is the screenshot you requested."`
 
 -   **Upload from standard input**:
+    `cat data.csv | scat upload --file - --filename data.csv`
 
-    You must provide a filename for the upload when streaming from stdin.
-
-    ```bash
-    cat data.csv | scat upload --file - --filename data.csv
-    ```
-
-### Profile Management (`profile`)
-
--   **List all profiles**:
-
-    The active profile is marked with an asterisk (`*`).
-
-    ```bash
-    scat profile list
-    ```
-
--   **Switch the active profile**:
-
-    ```bash
-    scat profile use another-profile
-    ```
-
--   **Run a command with a specific profile** (without changing the active one):
-
-    ```bash
-    scat --profile personal-slack post "This is for my personal workspace."
-    ```
-
--   **Add or modify a profile setting**:
-
-    ```bash
-    scat profile set channel "#random"
-    ```
+## Command Reference
 
 ### Global Flags
 
-These flags can be used with any command.
+| Flag      | Description                                      |
+| --------- | ------------------------------------------------ |
+| `--profile <name>` | Use a specific profile for the command.          |
+| `--debug`   | Enable verbose debug logging.                    |
+| `--silent`  | Suppress success messages.                       |
+| `--noop`    | Perform a dry run without sending content.       |
 
--   `--debug`: Enable verbose debug logging.
--   `--silent`: Suppress success messages.
--   `--noop`: Perform a dry run without actually posting or uploading content.
--   `--profile <name>`: Use a specific profile for the command.
+### Main Commands
+
+| Command         | Description                                      |
+| --------------- | ------------------------------------------------ |
+| `scat post`     | Posts a text message.                            |
+| `scat upload`   | Uploads a file.                                  |
+| `scat profile`  | Manages configuration profiles.                  |
+| `scat config`   | Manages the configuration file itself.           |
+| `scat channel`  | Lists channels for supported providers.          |
+
+### `post` Command Flags
+
+| Flag          | Shorthand | Description                               |
+| ------------- | --------- | ----------------------------------------- |
+| `--from-file` |           | Read message body from a file.            |
+| `--stream`    | `-s`      | Stream messages from stdin continuously.  |
+| `--tee`       | `-t`      | Print stdin to screen while posting.      |
+| `--username`  | `-u`      | Override the username for this post.      |
+| `--iconemoji` | `-i`      | Icon emoji to use (Slack provider only).  |
+
+### `upload` Command Flags
+
+| Flag        | Shorthand | Description                                      |
+| ----------- | --------- | ------------------------------------------------ |
+| `--file`    | `-f`      | **Required.** Path to the file, or `-` for stdin. |
+| `--filename`| `-n`      | Filename for the upload.                         |
+| `--filetype`|           | Filetype for syntax highlighting (e.g., `go`).   |
+| `--comment` | `-m`      | A comment to post with the file.                 |
+
+### `profile` Subcommands
+
+| Subcommand | Description                                      |
+| ---------- | ------------------------------------------------ |
+| `list`     | List all available profiles.                     |
+| `use`      | Set the active profile.                          |
+| `add`      | Add a new profile.                               |
+| `set`      | Set a value in the current profile.              |
+| `remove`   | Remove a profile.                                |
+
+### `config` and `channel` Subcommands
+
+| Command             | Description                                      |
+| ------------------- | ------------------------------------------------ |
+| `config init`       | Creates a new default configuration file.        |
+| `channel list`      | Lists available channels for `slack` profiles.   |
+
+---
+
+## Acknowledgements
+
+This project is heavily inspired by and based on the concepts of [bcicen/slackcat](https://github.com/bcicen/slackcat). The core logic for handling file/stdin streaming and posting was re-implemented with reference to the original `slackcat` codebase. `slackcat` is also distributed under the MIT License.
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
