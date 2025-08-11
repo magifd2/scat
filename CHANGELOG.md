@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-08-11
+
+### Features
+- **Slack Provider**: Automatically joins the channel if the bot is not in it when attempting to upload a file, then retries the upload. (`205db0b`)
+
 ## [1.0.0] - 2025-08-11
 
 This is the first official stable release of `scat`. It includes a wide range of features and improvements implemented since the initial development.
