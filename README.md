@@ -40,7 +40,7 @@ Before you can start posting, you need to create a configuration file.
 
     The default profile uses a mock provider, which is useful for testing. To post to a real service like Slack, you need to add a new profile.
 
-    For detailed instructions on setting up a Slack profile, please see the **[Slack Setup Guide](./SLACK_SETUP.md)**.
+    For detailed instructions on setting up a Slack profile, please see the **[Slack Setup Guide](./docs/SLACK_SETUP.md)**.
 
     Here is a quick example of how to add a new Slack profile:
 
