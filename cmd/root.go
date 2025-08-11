@@ -21,7 +21,8 @@ Features:
 - Post content from files or stdin.
 - Stream stdin continuously.
 - Manage multiple destination endpoints through profiles.`,
-	SilenceUsage: true, // Suppress usage message on error
+	SilenceUsage:  true, // Suppress usage message on error
+	SilenceErrors: true, // Suppress cobra's own error reporting
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		debug, _ := cmd.Flags().GetBool("debug")
 		noOp, _ := cmd.Flags().GetBool("noop")
