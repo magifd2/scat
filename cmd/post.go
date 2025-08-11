@@ -19,6 +19,8 @@ var postCmd = &cobra.Command{
 	Short: "Post a text message from an argument, file, or stdin",
 	Long:  `Posts a text message. The message content is sourced in the following order of precedence: 1. Command-line argument. 2. --from-file flag. 3. Standard input.`, 
 	RunE: func(cmd *cobra.Command, args []string) error {
+		appCtx := cmd.Context().Value(appcontext.CtxKey).(appcontext.Context)
+
 		// Load config
 		cfg, err := config.Load()
 		if err != nil {
@@ -40,19 +42,7 @@ var postCmd = &cobra.Command{
 		iconEmoji, _ := cmd.Flags().GetString("iconemoji")
 		channel, _ := cmd.Flags().GetString("channel")
 		tee, _ := cmd.Flags().GetBool("tee")
-		noop, _ := cmd.Flags().GetBool("noop")
-		silent, _ := cmd.Flags().GetBool("silent") // Get silent flag
 		fromFile, _ := cmd.Flags().GetString("from-file")
-
-		// Get debug flag from persistent flags
-		debug, _ := cmd.PersistentFlags().GetBool("debug")
-
-		// Create app context
-		appCtx := appcontext.Context{
-			Debug:  debug,
-			NoOp:   noop,
-			Silent: silent,
-		}
 
 		// Override channel from profile if flag is set
 		if channel != "" {
@@ -183,7 +173,5 @@ func init() {
 	postCmd.Flags().BoolP("stream", "s", false, "Stream messages from stdin continuously")
 	postCmd.Flags().BoolP("tee", "t", false, "Print stdin to screen before posting")
 	postCmd.Flags().StringP("username", "u", "", "Override the username for this post")
-	postCmd.Flags().Bool("noop", false, "Dry run, do not actually post")
 	postCmd.Flags().StringP("iconemoji", "i", "", "Icon emoji to use for the post (slack provider only)")
-	postCmd.Flags().Bool("silent", false, "Suppress informational messages")
 }

@@ -85,6 +85,10 @@ type completeUploadExternalPayload struct {
 // --- Provider Methods ---
 
 func (p *Provider) PostMessage(text, overrideUsername, iconEmoji string) error {
+	if p.Context.Debug {
+		fmt.Fprintln(os.Stderr, "[DEBUG] PostMessage called with Debug mode ON.")
+	}
+
 	channelID, err := p.getChannelID(p.Profile.Channel)
 	if err != nil {
 		return err

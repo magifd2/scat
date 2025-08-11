@@ -15,15 +15,7 @@ var channelListCmd = &cobra.Command{
 	Short: "List available channels for supported providers",
 	Long:  `Iterates through all configured profiles and lists the available channels for each profile whose provider supports this feature.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// Get debug flag from persistent flags
-		debug, _ := cmd.PersistentFlags().GetBool("debug")
-
-		// Create app context
-		appCtx := appcontext.Context{
-			Debug:  debug,
-			NoOp:   false, // Noop is not relevant for listing
-			Silent: false, // Silent is not relevant for listing, always show output unless --json
-		}
+		appCtx := cmd.Context().Value(appcontext.CtxKey).(appcontext.Context)
 
 		cfg, err := config.Load()
 		if err != nil {
