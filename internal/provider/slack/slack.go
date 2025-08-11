@@ -32,7 +32,16 @@ type Provider struct {
 
 // NewProvider creates a new Slack Provider.
 func NewProvider(p config.Profile, ctx appcontext.Context) (provider.Interface, error) {
-	return &Provider{Profile: p, Context: ctx}, nil
+	prov := &Provider{Profile: p, Context: ctx}
+	// Best-effort attempt to populate the channel cache on initialization.
+	// If it fails (e.g., due to missing permissions), we don't treat it as a fatal error.
+	// The cache will be populated on-demand later if needed.
+	if err := prov.populateChannelCache(); err != nil {
+		if ctx.Debug {
+			fmt.Fprintf(os.Stderr, "[DEBUG] Failed to populate channel cache on init: %v\n", err)
+		}
+	}
+	return prov, nil
 }
 
 // Capabilities returns the features supported by the Slack provider.
@@ -82,6 +91,7 @@ type completeUploadExternalPayload struct {
 	InitialComment string     `json:"initial_comment,omitempty"`
 }
 
+
 // --- Provider Methods ---
 
 func (p *Provider) PostMessage(text, overrideUsername, iconEmoji string) error {
@@ -91,7 +101,19 @@ func (p *Provider) PostMessage(text, overrideUsername, iconEmoji string) error {
 
 	channelID, err := p.getChannelID(p.Profile.Channel)
 	if err != nil {
-		return err
+		// If the channel is not found in the cache, it might be stale.
+		// Refresh the cache and try one more time.
+		if p.Context.Debug {
+			fmt.Fprintf(os.Stderr, "[DEBUG] Channel '%s' not in cache. Refreshing...\n", p.Profile.Channel)
+		}
+		if refreshErr := p.populateChannelCache(); refreshErr != nil {
+			return fmt.Errorf("failed to refresh channel list: %w", refreshErr)
+		}
+		// Retry getting ID from the newly populated cache.
+		channelID, err = p.getChannelID(p.Profile.Channel)
+		if err != nil {
+			return fmt.Errorf("channel '%s' still not found after refresh: %w", p.Profile.Channel, err)
+		}
 	}
 
 	username := p.Profile.Username
@@ -193,7 +215,19 @@ func (p *Provider) PostFile(filePath, filename, filetype, comment, overrideUsern
 	// Step 3: Complete the upload
 	channelID, err := p.getChannelID(p.Profile.Channel)
 	if err != nil {
-		return err
+		// If the channel is not found in the cache, it might be stale.
+		// Refresh the cache and try one more time.
+		if p.Context.Debug {
+			fmt.Fprintf(os.Stderr, "[DEBUG] Channel '%s' not in cache for file upload. Refreshing...\n", p.Profile.Channel)
+		}
+		if refreshErr := p.populateChannelCache(); refreshErr != nil {
+			return fmt.Errorf("failed to refresh channel list: %w", refreshErr)
+		}
+		// Retry getting ID from the newly populated cache.
+		channelID, err = p.getChannelID(p.Profile.Channel)
+		if err != nil {
+			return fmt.Errorf("channel '%s' still not found after refresh: %w", p.Profile.Channel, err)
+		}
 	}
 
 	completePayload := completeUploadExternalPayload{
@@ -208,6 +242,8 @@ func (p *Provider) PostFile(filePath, filename, filetype, comment, overrideUsern
 
 	_, err = p.sendRequest("POST", completeUploadExternalURL, bytes.NewBuffer(completePayloadBytes), "application/json; charset=utf-8")
 	if err != nil {
+		// Here too, we could get a not_in_channel error, but joining and retrying for file uploads is more complex.
+		// For now, we'll just return the error. A future improvement could handle this.
 		return fmt.Errorf("step 3 (completeUploadExternal) failed: %w", err)
 	}
 
@@ -215,6 +251,7 @@ func (p *Provider) PostFile(filePath, filename, filetype, comment, overrideUsern
 }
 
 func (p *Provider) ListChannels() ([]string, error) {
+	// Ensure the cache is populated before listing.
 	if p.channelIDCache == nil {
 		if err := p.populateChannelCache(); err != nil {
 			return nil, err
@@ -230,20 +267,31 @@ func (p *Provider) ListChannels() ([]string, error) {
 // --- Helper Methods ---
 
 func (p *Provider) getChannelID(name string) (string, error) {
-	if p.channelIDCache == nil {
-		if err := p.populateChannelCache(); err != nil {
-			return "", err
-		}
-	}
 	// Slack channel names can be with or without a leading #
 	name = strings.TrimPrefix(name, "#")
-	if id, ok := p.channelIDCache[name]; ok {
-		return id, nil
+
+	// Check the cache first.
+	if p.channelIDCache != nil {
+		if id, ok := p.channelIDCache[name]; ok {
+			return id, nil
+		}
 	}
-	return "", fmt.Errorf("channel '%s' not found", name)
+
+	// If not in cache, maybe the provided name is already an ID.
+	// A simple check is to see if it starts with 'C' (public), 'G' (private), or 'D' (direct message).
+	if strings.HasPrefix(name, "C") || strings.HasPrefix(name, "G") || strings.HasPrefix(name, "D") {
+		return name, nil
+	}
+
+	// If it's not in the cache and not a plausible ID, return an error
+	// to signal the caller that a cache refresh might be needed.
+	return "", fmt.Errorf("channel '%s' not found in local cache", name)
 }
 
 func (p *Provider) populateChannelCache() error {
+	if p.Context.Debug {
+		fmt.Fprintf(os.Stderr, "[DEBUG] Populating channel cache by calling conversations.list...\n")
+	}
 	p.channelIDCache = make(map[string]string)
 	cursor := ""
 
