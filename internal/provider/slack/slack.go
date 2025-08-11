@@ -171,8 +171,24 @@ func (p *Provider) PostFile(filePath, filename, filetype, comment, overrideUsern
 
 	_, err = p.sendRequest("POST", completeUploadExternalURL, bytes.NewBuffer(completePayloadBytes), "application/json; charset=utf-8")
 	if err != nil {
-		// Here too, we could get a not_in_channel error, but joining and retrying for file uploads is more complex.
-		// For now, we'll just return the error. A future improvement could handle this.
+		// Check if the error is 'not_in_channel' and retry if so.
+		if strings.Contains(err.Error(), "slack API error: not_in_channel") {
+			if !p.Context.Silent {
+				fmt.Fprintf(os.Stderr, "Bot not in channel '%s'. Attempting to join...\n", p.Profile.Channel)
+			}
+			if joinErr := p.joinChannel(channelID); joinErr != nil {
+				return fmt.Errorf("failed to join channel '%s': %w", p.Profile.Channel, joinErr)
+			}
+			if !p.Context.Silent {
+				fmt.Fprintf(os.Stderr, "Successfully joined channel '%s'. Retrying file upload completion...\n", p.Profile.Channel)
+			}
+			// Retry completing the upload after joining.
+			_, retryErr := p.sendRequest("POST", completeUploadExternalURL, bytes.NewBuffer(completePayloadBytes), "application/json; charset=utf-8")
+			if retryErr != nil {
+				return fmt.Errorf("step 3 (completeUploadExternal) failed on retry: %w", retryErr)
+			}
+			return nil // Success on retry
+		}
 		return fmt.Errorf("step 3 (completeUploadExternal) failed: %w", err)
 	}
 
