@@ -29,6 +29,7 @@ Once you are on the app's management screen, you need to add the permissions tha
     *   `channels:read`: Required to list public channels (for the `channel list` command).
     *   `groups:read`: Required to list private channels (for the `channel list` command).
     *   `channels:join`: Required for the bot to automatically join public channels before posting.
+    *   `chat:write.customize`: **Optional**. Required if you want to override the bot's name or icon using the `--username` or `--iconemoji` flags.
 
 ### Step 3: Install the App to Your Workspace
 
