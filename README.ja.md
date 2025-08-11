@@ -2,8 +2,6 @@
 
 `scat` は、ファイルや標準入力から受け取ったコンテンツを、Slackなどの設定済み宛先に送信するための、多機能なコマンドラインインターフェースです。`slackcat` にインスパイアされていますが、より汎用的で拡張しやすいように設計されています。
 
-[![Build Status](https://github.com/magifd2/scat/actions/workflows/build.yml/badge.svg)](https://github.com/magifd2/scat/actions/workflows/build.yml)
-
 ---
 
 ## 主な機能
