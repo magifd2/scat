@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2025-08-12
+
+### Features
+
+- **Configurable Config Path**: Added `--config` global option to specify an alternative path for the configuration file, overriding the default `~/.config/scat/config.json`.
+
+### Fixes
+
+- **Compilation Errors**: Resolved compilation errors introduced by changes to `config` package function signatures.
+- **Linting Issues**: Fixed linting errors related to unchecked error returns and unused imports.
+
+### Refactoring
+
+- **Config Package**: Modified `config.Load()`, `config.Save()`, and `config.GetConfigPath()` to accept and utilize a configurable path.
+- **CLI Commands**: Updated all `cmd` package files that load or save configuration to use the new configurable path.
+- **Error Handling**: Improved error handling for `MarkFlagRequired` in `cmd/export_log.go` to avoid panics.
+
 ## [1.3.0] - 2025-08-12
 
 ### Refactoring
