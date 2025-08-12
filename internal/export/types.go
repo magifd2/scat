@@ -1,7 +1,5 @@
 package export
 
-import "github.com/magifd2/scat/internal/provider"
-
 // ExportedLog is the top-level structure for the exported log file.
 type ExportedLog struct {
 	ExportTimestamp string            `json:"export_timestamp"`
@@ -28,11 +26,10 @@ type ExportedFile struct {
 
 // Options defines the parameters for an export operation.
 type Options struct {
-	Channel       string
-	StartTime     string
-	EndTime       string
-	IncludeFiles  bool
-	OutputDir     string
-	OutputFormat  string
-	Provider      provider.LogExporter
+	ChannelID    string
+	StartTime    string
+	EndTime      string
+	IncludeFiles bool
+	OutputDir    string
+	OutputFormat string
 }

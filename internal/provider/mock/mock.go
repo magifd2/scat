@@ -72,9 +72,9 @@ func (p *Provider) ListChannels() ([]string, error) {
 
 // --- LogExporter Methods ---
 
-func (p *Provider) GetConversationHistory(channelID string, latest, oldest string, limit int, cursor string) (*provider.ConversationHistoryResponse, error) {
+func (p *Provider) GetConversationHistory(opts provider.GetConversationHistoryOptions) (*provider.ConversationHistoryResponse, error) {
 	if !p.Context.Silent {
-		fmt.Fprintln(os.Stderr, "--- [MOCK] GetConversationHistory called ---")
+		fmt.Fprintf(os.Stderr, "--- [MOCK] GetConversationHistory called for channel %s ---\\n", opts.ChannelID)
 	}
 	// Return a dummy response for testing
 	resp := &provider.ConversationHistoryResponse{

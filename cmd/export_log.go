@@ -65,13 +65,12 @@ var exportLogCmd = &cobra.Command{
 		// Create exporter and run
 		exporter := export.NewExporter(prov.LogExporter())
 		opts := export.Options{
-			Channel:      channel,
+			ChannelID:    channel, // Note: This is the channel NAME, it will be resolved to ID inside the exporter
 			StartTime:    startTime,
 			EndTime:      endTime,
 			IncludeFiles: includeFiles,
 			OutputDir:    outputDir,
 			OutputFormat: outputFormat,
-			Provider:     prov.LogExporter(),
 		}
 
 		_, err = exporter.ExportLog(opts)

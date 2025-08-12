@@ -3,6 +3,15 @@ package provider
 // This file defines common, provider-agnostic data structures for API responses
 // used by the LogExporter interface.
 
+// GetConversationHistoryOptions defines the parameters for a GetConversationHistory call.
+type GetConversationHistoryOptions struct {
+	ChannelID string // Required
+	Latest    string // Optional
+	Oldest    string // Optional
+	Limit     int    // Optional
+	Cursor    string // Optional
+}
+
 // ConversationHistoryResponse represents the response from a conversation history API call.
 type ConversationHistoryResponse struct {
 	Messages         []Message

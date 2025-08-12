@@ -11,7 +11,7 @@ type Capabilities struct {
 // LogExporter defines the interface for exporting channel logs.
 // This is separated from the main Interface to avoid bloating it with a large, optional feature set.
 type LogExporter interface {
-	GetConversationHistory(channelID string, latest, oldest string, limit int, cursor string) (*ConversationHistoryResponse, error)
+	GetConversationHistory(opts GetConversationHistoryOptions) (*ConversationHistoryResponse, error)
 	GetUserInfo(userID string) (*UserInfoResponse, error)
 	DownloadFile(fileURL string) ([]byte, error)
 }

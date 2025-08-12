@@ -18,7 +18,7 @@ func (p *Provider) getChannelID(name string) (string, error) {
 
 	// If not found, refresh the cache from the API.
 	if p.Context.Debug {
-		fmt.Fprintf(os.Stderr, "[DEBUG] Channel '%s' not in cache. Refreshing...\n", name)
+		fmt.Fprintf(os.Stderr, "[DEBUG] Channel \"%s\" not in cache. Refreshing...\n", name)
 	}
 	if refreshErr := p.populateChannelCache(); refreshErr != nil {
 		return "", fmt.Errorf("failed to refresh channel list: %w", refreshErr)
@@ -31,7 +31,7 @@ func (p *Provider) getChannelID(name string) (string, error) {
 	}
 
 	// If it's still not found, the channel likely doesn't exist.
-	return "", fmt.Errorf("channel '%s' not found after refreshing cache", name)
+	return "", fmt.Errorf("channel \"%s\" not found after refreshing cache", name)
 }
 
 // getCachedChannelID is a helper that only checks the local cache.
@@ -50,4 +50,18 @@ func (p *Provider) getCachedChannelID(name string) (string, error) {
 	}
 
 	return "", fmt.Errorf("not found in cache")
+}
+
+func (p *Provider) ListChannels() ([]string, error) {
+	// Ensure the cache is populated before listing.
+	if p.channelIDCache == nil {
+		if err := p.populateChannelCache(); err != nil {
+			return nil, err
+		}
+	}
+	var channelNames []string
+	for name := range p.channelIDCache {
+		channelNames = append(channelNames, "#"+name)
+	}
+	return channelNames, nil
 }
