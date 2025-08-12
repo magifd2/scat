@@ -16,10 +16,10 @@ type Interface interface {
 	Capabilities() Capabilities
 
 	// PostMessage sends a text-based message.
-	PostMessage(text, overrideUsername, iconEmoji string) error
+	PostMessage(opts PostMessageOptions) error
 
 	// PostFile sends a file.
-	PostFile(filePath, filename, filetype, comment, overrideUsername, iconEmoji string) error
+	PostFile(opts PostFileOptions) error
 
 	// ListChannels lists available channels for the provider.
 	ListChannels() ([]string, error)

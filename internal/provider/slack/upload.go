@@ -9,25 +9,27 @@ import (
 	"net/url"
 	"os"
 	"strings"
+
+	"github.com/magifd2/scat/internal/provider"
 )
 
-func (p *Provider) PostFile(filePath, filename, filetype, comment, overrideUsername, iconEmoji string) error {
+func (p *Provider) PostFile(opts provider.PostFileOptions) error {
 	if p.Context.NoOp {
 		fmt.Printf("---\n")
 		fmt.Printf("Provider: slack\n")
-		fmt.Printf("Action: Upload file %s\n", filePath)
+		fmt.Printf("Action: Upload file %s\n", opts.FilePath)
 		fmt.Printf("---------------------\n")
 		return nil
 	}
 
 	// Step 1: Get Upload URL
-	fi, err := os.Stat(filePath)
+	fi, err := os.Stat(opts.FilePath)
 	if err != nil {
 		return fmt.Errorf("failed to get file info: %w", err)
 	}
 
 	getURLParams := url.Values{}
-	getURLParams.Add("filename", filename)
+	getURLParams.Add("filename", opts.Filename)
 	getURLParams.Add("length", fmt.Sprintf("%d", fi.Size()))
 
 	respBody, err := p.sendRequest("GET", getUploadURLExternalURL+"?"+getURLParams.Encode(), nil, "")
@@ -44,7 +46,7 @@ func (p *Provider) PostFile(filePath, filename, filetype, comment, overrideUsern
 	}
 
 	// Step 2: Upload file to the provided URL
-	file, err := os.Open(filePath)
+	file, err := os.Open(opts.FilePath)
 	if err != nil {
 		return fmt.Errorf("failed to open file for upload: %w", err)
 	}
@@ -76,7 +78,7 @@ func (p *Provider) PostFile(filePath, filename, filetype, comment, overrideUsern
 	completePayload := completeUploadExternalPayload{
 		Files:          []fileInfo{{ID: getURLResp.FileID}},
 		ChannelID:      channelID,
-		InitialComment: comment,
+		InitialComment: opts.Comment,
 	}
 	completePayloadBytes, err := json.Marshal(completePayload)
 	if err != nil {
@@ -86,7 +88,7 @@ func (p *Provider) PostFile(filePath, filename, filetype, comment, overrideUsern
 	_, err = p.sendRequest("POST", completeUploadExternalURL, bytes.NewBuffer(completePayloadBytes), "application/json; charset=utf-8")
 	if err != nil {
 		// Check if the error is 'not_in_channel' and retry if so.
-		if strings.Contains(err.Error(), "slack API error: not_in_channel") {
+		if strings.Contains(err.Error(), "not_in_channel") {
 			if !p.Context.Silent {
 				fmt.Fprintf(os.Stderr, "Bot not in channel '%s'. Attempting to join...\n", p.Profile.Channel)
 			}

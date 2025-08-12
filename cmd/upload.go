@@ -7,6 +7,7 @@ import (
 
 	"github.com/magifd2/scat/internal/appcontext"
 	"github.com/magifd2/scat/internal/config"
+	"github.com/magifd2/scat/internal/provider"
 	"github.com/spf13/cobra"
 )
 
@@ -94,7 +95,13 @@ var uploadCmd = &cobra.Command{
 			}
 		}
 
-		if err := prov.PostFile(filePath, filename, filetype, comment, "", ""); err != nil {
+		opts := provider.PostFileOptions{
+			FilePath: filePath,
+			Filename: filename,
+			Filetype: filetype,
+			Comment:  comment,
+		}
+		if err := prov.PostFile(opts); err != nil {
 			return fmt.Errorf("failed to post file: %w", err)
 		}
 		if !appCtx.Silent {

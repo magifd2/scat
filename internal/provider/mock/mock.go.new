@@ -78,5 +78,5 @@ func (p *Provider) ExportLog(opts export.Options) (*export.ExportedLog, error) {
 				Text:          "Hello from mock exporter!",
 			},
 		},
-	}, nil
+	},
 }

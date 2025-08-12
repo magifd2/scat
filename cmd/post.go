@@ -17,7 +17,7 @@ import (
 var postCmd = &cobra.Command{
 	Use:   "post [message text]",
 	Short: "Post a text message from an argument, file, or stdin",
-	Long:  `Posts a text message. The message content is sourced in the following order of precedence: 1. Command-line argument. 2. --from-file flag. 3. Standard input.`, 
+	Long:  `Posts a text message. The message content is sourced in the following order of precedence: 1. Command-line argument. 2. --from-file flag. 3. Standard input.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		appCtx := cmd.Context().Value(appcontext.CtxKey).(appcontext.Context)
 
@@ -104,7 +104,12 @@ var postCmd = &cobra.Command{
 		}
 
 		// Post the message
-		if err := prov.PostMessage(content, username, iconEmoji); err != nil {
+		opts := provider.PostMessageOptions{
+			Text:             content,
+			OverrideUsername: username,
+			IconEmoji:        iconEmoji,
+		}
+		if err := prov.PostMessage(opts); err != nil {
 			return fmt.Errorf("failed to post message: %w", err)
 		}
 		if !appCtx.Silent {
@@ -143,7 +148,12 @@ func handleStream(prov provider.Interface, profileName, overrideUsername, iconEm
 			if !ok {
 				if len(buffer) > 0 {
 					fmt.Fprintf(os.Stderr, "Flushing %d remaining lines...\n", len(buffer))
-					if err := prov.PostMessage(strings.Join(buffer, "\n"), overrideUsername, iconEmoji); err != nil {
+					opts := provider.PostMessageOptions{
+						Text:             strings.Join(buffer, "\n"),
+						OverrideUsername: overrideUsername,
+						IconEmoji:        iconEmoji,
+					}
+					if err := prov.PostMessage(opts); err != nil {
 						fmt.Fprintf(os.Stderr, "Error flushing remaining lines: %v\n", err)
 					}
 				}
@@ -155,7 +165,12 @@ func handleStream(prov provider.Interface, profileName, overrideUsername, iconEm
 			buffer = append(buffer, line)
 		case <-ticker.C:
 			if len(buffer) > 0 {
-				if err := prov.PostMessage(strings.Join(buffer, "\n"), overrideUsername, iconEmoji); err != nil {
+				opts := provider.PostMessageOptions{
+					Text:             strings.Join(buffer, "\n"),
+					OverrideUsername: overrideUsername,
+					IconEmoji:        iconEmoji,
+				}
+				if err := prov.PostMessage(opts); err != nil {
 					fmt.Fprintf(os.Stderr, "Error posting message: %v\n", err)
 				}
 				if !silent {
