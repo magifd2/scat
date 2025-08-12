@@ -106,6 +106,7 @@ Here are some common ways to use `scat`.
 
 | Flag          | Shorthand | Description                               |
 | ------------- | --------- | ----------------------------------------- |
+| `--channel`   | `-c`      | Override the destination channel (ID or name) for this post. |
 | `--from-file` |           | Read message body from a file.            |
 | `--stream`    | `-s`      | Stream messages from stdin continuously.  |
 | `--tee`       | `-t`      | Print stdin to screen while posting.      |
@@ -116,6 +117,7 @@ Here are some common ways to use `scat`.
 
 | Flag        | Shorthand | Description                                      |
 | ----------- | --------- | ------------------------------------------------ |
+| `--channel` | `-c`      | Override the destination channel (ID or name) for this upload. |
 | `--file`    | `-f`      | **Required.** Path to the file, or `-` for stdin. |
 | `--filename`| `-n`      | Filename for the upload.                         |
 | `--filetype`|           | Filetype for syntax highlighting (e.g., `go`).   |
