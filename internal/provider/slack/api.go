@@ -6,7 +6,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
+	"strings"
+
+	"github.com/magifd2/scat/internal/export"
 )
 
 const (
@@ -18,6 +22,45 @@ const (
 	conversationsHistoryURL   = "https://slack.com/api/conversations.history"
 	usersInfoURL              = "https://slack.com/api/users.info"
 )
+
+func (p *Provider) getConversationHistory(channelID string, opts export.Options, cursor string) (*conversationsHistoryResponse, error) {
+	params := url.Values{}
+	params.Add("channel", channelID)
+	if opts.EndTime != "" {
+		params.Add("latest", opts.EndTime)
+	}
+	if opts.StartTime != "" {
+		params.Add("oldest", opts.StartTime)
+	}
+	if cursor != "" {
+		params.Add("cursor", cursor)
+	}
+	params.Add("limit", "200")
+
+	respBody, err := p.sendRequest("GET", conversationsHistoryURL+"?"+params.Encode(), nil, "")
+	if err != nil && strings.Contains(err.Error(), "not_in_channel") {
+		if !p.Context.Silent {
+			fmt.Fprintf(os.Stderr, "Bot not in channel '%s'. Attempting to join...\n", opts.ChannelName)
+		}
+		if joinErr := p.joinChannel(channelID); joinErr != nil {
+			return nil, fmt.Errorf("failed to auto-join channel '%s': %w", opts.ChannelName, joinErr)
+		}
+		if !p.Context.Silent {
+			fmt.Fprintf(os.Stderr, "Successfully joined channel '%s'. Retrying...\n", opts.ChannelName)
+		}
+		respBody, err = p.sendRequest("GET", conversationsHistoryURL+"?"+params.Encode(), nil, "")
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to call conversations.history: %w", err)
+	}
+
+	var slackResp conversationsHistoryResponse
+	if err := json.Unmarshal(respBody, &slackResp); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal conversations.history response: %w", err)
+	}
+	return &slackResp, nil
+}
 
 func (p *Provider) populateChannelCache() error {
 	if p.Context.Debug {
