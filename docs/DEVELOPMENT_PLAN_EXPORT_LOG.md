@@ -24,77 +24,77 @@ The development will follow the Safe Refactoring Protocol (III-2) by making mini
 
 #### Phase 1: Provider Interface and Slack API Integration
 
-1.  **`Capabilities`構造体の更新:**
-    *   **ファイル:** `internal/provider/provider.go`
-    *   **変更点:** `Capabilities`構造体に新しいブール値フィールドを追加します。
+1.  **Update `Capabilities` Struct:**
+    *   **File:** `internal/provider/provider.go`
+    *   **Changes:** Add new boolean fields to the `Capabilities` struct:
         *   `CanExportLogs bool`
         *   `CanResolveUsers bool`
         *   `CanDownloadFiles bool`
-    *   **テスト:** `Provider`実装の既存のテストが引き続きパスすることを確認します。
-2.  **`Provider`インターフェースの更新（新しいメソッドの追加）:**
-    *   **ファイル:** `internal/provider/provider.go`
-    *   **変更点:** `Provider`インターフェースに新しいメソッドを追加します。
+    *   **Testing:** Ensure existing tests for `Provider` implementations still pass.
+2.  **Update `Provider` Interface (Add New Methods):**
+    *   **File:** `internal/provider/provider.go`
+    *   **Changes:** Add new methods to the `Provider` interface:
         *   `GetConversationHistory(channelID string, latest, oldest string, limit int, cursor string) (*ConversationsHistoryResponse, error)`
         *   `GetUserInfo(userID string) (*UserInfoResponse, error)`
         *   `DownloadFile(fileURL string, token string) ([]byte, error)`
-    *   **テスト:** `Provider`実装の既存のテストが引き続きパスすることを確認します。
-3.  **Slackプロバイダーでの新しいメソッドと機能の実装:**
-    *   **ファイル:** `internal/provider/slack/api.go`（API呼び出し用）および`internal/provider/slack/slack.go`（`Capabilities`メソッド用）
-    *   **関数:** `Provider`インターフェースで定義されている`GetConversationHistory`、`GetUserInfo`、`DownloadFile`メソッドを実装します。
-    *   **機能:** `internal/provider/slack/slack.go`の`Capabilities()`メソッドを更新し、`CanExportLogs`、`CanResolveUsers`、`CanDownloadFiles`に対して`true`を返します。
-    *   **詳細:** `conversations.history`、`users.info`へのAPI呼び出しとファイルダウンロードロジックを実装します。`conversations.history`のページネーションを処理します。
-    *   **テスト:** これらの新しいAPI呼び出しとファイルダウンロードの単体テスト。
-4.  **モックプロバイダーの更新:**
-    *   **ファイル:** `internal/provider/mock/mock.go`
-    *   **変更点:** 新しい`GetConversationHistory`、`GetUserInfo`、`DownloadFile`メソッドを実装します。これらはテスト目的でno-opまたはダミーデータを返すことができます。
-    *   **機能:** `Capabilities()`メソッドを更新し、`CanExportLogs`、`CanResolveUsers`、`CanDownloadFiles`に対して適切なブール値を返します。モックプロバイダーの場合、CLIロジックのテストを許可するために`true`を返すことも、サポートされていない機能のCLIの処理をテストするために`false`を返すこともできます。テスト目的で`true`から始めます。
-    *   **テスト:** モックプロバイダーの既存のテストが引き続きパスすることを確認します。
+    *   **Testing:** Ensure existing tests for `Provider` implementations still pass.
+3.  **Implement New Methods and Capabilities in Slack Provider:**
+    *   **File:** `internal/provider/slack/api.go` (for API calls) and `internal/provider/slack/slack.go` (for `Capabilities` method)
+    *   **Functions:** Implement the `GetConversationHistory`, `GetUserInfo`, and `DownloadFile` methods as defined in the `Provider` interface.
+    *   **Capabilities:** Update the `Capabilities()` method in `internal/provider/slack/slack.go` to return `true` for `CanExportLogs`, `CanResolveUsers`, and `CanDownloadFiles`.
+    *   **Details:** Implement the API calls to `conversations.history`, `users.info`, and the file download logic. Handle pagination for `conversations.history`.
+    *   **Testing:** Unit tests for these new API calls and file download.
+4.  **Update Mock Provider:**
+    *   **File:** `internal/provider/mock/mock.go`
+    *   **Changes:** Implement the new `GetConversationHistory`, `GetUserInfo`, and `DownloadFile` methods. These can be no-op or return dummy data for testing purposes.
+    *   **Capabilities:** Update the `Capabilities()` method to return appropriate boolean values for `CanExportLogs`, `CanResolveUsers`, and `CanDownloadFiles`. For the mock provider, these might return `true` to allow testing the CLI logic, or `false` to test the CLI's handling of unsupported features. We'll start with `true` for testing purposes.
+    *   **Testing:** Ensure existing tests for the mock provider still pass.
 
 #### Phase 2: Core Logic and Data Structs
 
 1.  **Define Structured Data Models:**
-    *   **ファイル:** `internal/provider/slack/types.go`（Slack API応答構造体用）および`internal/export/types.go`（汎用エクスポートデータ構造体用の新規ファイル）
-    *   **構造体:**
-        *   `ExportedLog`: `ChannelInfo`、`ExportTimestamp`、`Messages`を含むトップレベルの構造体。
-        *   `ExportedMessage`: `ID`、`UserID`、`UserName`、`Text`、`Timestamp`、`Type`、`Files`（`ExportedFile`の配列）を含む単一のメッセージを表す。
-        *   `ExportedFile`: `ID`、`Name`、`MimeType`、`LocalPath`（ダウンロードされた場合）を含む添付ファイルを表す。
-    *   **詳細:** 解析および変換されたデータを保持するためのGo構造体を設計します。
-2.  **キャッシュ付きユーザーリゾルバーの実装:**
-    *   **ファイル:** `internal/export/userresolver.go`（新規ファイル）
-    *   **関数:** `ResolveUserName(userID string, provider provider.Interface) (string, error)`
-    *   **詳細:** 冗長なAPI呼び出しを避けるために、ユーザーIDのキャッシュメカニズムを実装します。これは`provider.GetUserInfo`メソッドを使用します。
-    *   **テスト:** ユーザーリゾルバーとキャッシュの単体テスト。
-3.  **ファイルハンドラーの実装:**
-    *   **ファイル:** `internal/export/filehandler.go`（新規ファイル）
-    *   **関数:** `HandleAttachedFiles(files []SlackFile, exportDir string, provider provider.Interface) ([]ExportedFile, error)`
-    *   **詳細:** 添付ファイルを反復処理し、`exportDir`に`provider.DownloadFile`を使用してダウンロードし、`ExportedFile`を`LocalPath`で更新します。
+    *   **File:** `internal/provider/slack/types.go` (for Slack API response structs) and `internal/export/types.go` (new file for generic export data structs)
+    *   **Structs:**
+        *   `ExportedLog`: Top-level struct containing `ChannelInfo`, `ExportTimestamp`, `Messages`.
+        *   `ExportedMessage`: Represents a single message, including `ID`, `UserID`, `UserName`, `Text`, `Timestamp`, `Type`, `Files` (array of `ExportedFile`).
+        *   `ExportedFile`: Represents an attached file, including `ID`, `Name`, `MimeType`, `LocalPath` (if downloaded).
+    *   **Details:** Design the Go structs to hold the parsed and transformed data.
+2.  **Implement User Resolver with Caching:**
+    *   **File:** `internal/export/userresolver.go` (new file)
+    *   **Function:** `ResolveUserName(userID string, provider provider.Interface) (string, error)`
+    *   **Details:** Implement a caching mechanism for user IDs to avoid redundant API calls. This will use the `provider.GetUserInfo` method.
+    *   **Testing:** Unit tests for the user resolver and caching.
+3.  **Implement File Handler:**
+    *   **File:** `internal/export/filehandler.go` (new file)
+    *   **Function:** `HandleAttachedFiles(files []SlackFile, exportDir string, provider provider.Interface) ([]ExportedFile, error)`
+    *   **Details:** Iterate through attached files, download them to `exportDir` using `provider.DownloadFile`, and update `ExportedFile` with `LocalPath`.
 
 #### Phase 3: Command-Line Interface (CLI) Integration
 
 1.  **Create New Cobra Commands:**
-    *   **ファイル:** `cmd/export.go`（親`export`コマンド用の新規ファイル）
-    *   **ファイル:** `cmd/export_log.go`（`log`サブコマンド用の新規ファイル）
-    *   **コマンド構造:** `scat export log <channel-name>`
-    *   **フラグ（`log`サブコマンド用）:**
-        *   `--channel <name>`（必須）：エクスポート元のチャネル。
-        *   `--output-format <format>`（オプション、デフォルト`json`）：`json`または`text`。
-        *   `--start-time <timestamp>`（オプション）：時間範囲の開始。
-        *   `--end-time <timestamp>`（オプション）：時間範囲の終了。
-        *   `--include-files`（オプション、ブール値）：添付ファイルをダウンロードするかどうか。
-        *   `--output-dir <path>`（オプション）：エクスポートされたファイルとJSON出力を保存するディレクトリ。
-    *   **詳細:** `exportCmd`を`rootCmd`と統合し、`exportLogCmd`を`exportCmd`と統合します。
+    *   **File:** `cmd/export.go` (new file for the parent `export` command)
+    *   **File:** `cmd/export_log.go` (new file for the `log` subcommand)
+    *   **Command Structure:** `scat export log <channel-name>`
+    *   **Flags (for `log` subcommand):**
+        *   `--channel <name>` (required): Channel to export from.
+        *   `--output-format <format>` (optional, default `json`): `json` or `text`.
+        *   `--start-time <timestamp>` (optional): Start of time range.
+        *   `--end-time <timestamp>` (optional): End of time range.
+        *   `--include-files` (optional, boolean): Whether to download attached files.
+        *   `--output-dir <path>` (optional): Directory to save exported files and JSON output.
+    *   **Details:** Integrate `exportCmd` with `rootCmd`, and `exportLogCmd` with `exportCmd`.
 2.  **Implement Command Logic:**
     *   Parse flags.
-    *   現在のプロバイダーインスタンスを取得します。
-    *   **`provider.Capabilities()`を使用してプロバイダーの機能を確認します。**
-        *   `provider.Capabilities().CanExportLogs`が`false`の場合、エラーを出力して終了します。
-        *   `--include-files`が設定されており、`provider.Capabilities().CanDownloadFiles`が`false`の場合、エラーを出力して終了します。
-        *   ユーザー解決が必要で、`provider.Capabilities().CanResolveUsers`が`false`の場合、適切に処理します（例: 名前ではなくユーザーIDを出力するか、警告を出力します）。
-    *   チャネル名をIDに解決します。
-    *   `Provider.GetConversationHistory`を呼び出します。
-    *   メッセージを反復処理し、`UserResolver`を使用してユーザー名を解決し、`FileHandler`を使用してファイルのダウンロードを処理します。
-    *   **データ検証とサニタイズを適用します。**
-    *   `--output-format`に基づいてデータをフォーマットして出力します。
+    *   Get the current provider instance.
+    *   **Check provider capabilities using `provider.Capabilities()`:**
+        *   If `provider.Capabilities().CanExportLogs` is `false`, print an error and exit.
+        *   If `--include-files` is set and `provider.Capabilities().CanDownloadFiles` is `false`, print an error and exit.
+        *   If user resolution is required and `provider.Capabilities().CanResolveUsers` is `false`, handle appropriately (e.g., output user IDs instead of names, or print a warning).
+    *   Resolve channel name to ID.
+    *   Call `Provider.GetConversationHistory`.
+    *   Iterate through messages, resolve user names using the `UserResolver`, and handle file downloads using the `FileHandler`.
+    *   **Apply data validation and sanitization.**
+    *   Format and output the data based on `--output-format`.
 
 #### Phase 4: Documentation and Verification
 
@@ -107,12 +107,12 @@ The development will follow the Safe Refactoring Protocol (III-2) by making mini
 
 ### VI. Estimated Effort
 
-*   **Phase 1 (Provider Interface & Slack API Integration):** 6〜10時間
-*   **Phase 2 (Core Logic & Data Structs):** 8〜16時間
-*   **Phase 3 (CLI Integration):** 4〜8時間
-*   **Phase 4 (Documentation & Verification):** 2〜4時間
+*   **Phase 1 (Provider Interface & Slack API Integration):** 6-10 hours
+*   **Phase 2 (Core Logic & Data Structs):** 8-16 hours
+*   **Phase 3 (CLI Integration):** 4-8 hours
+*   **Phase 4 (Documentation & Verification):** 2-4 hours
 
-**Total Estimated Effort:** 20〜38時間（約2.5〜5日間の集中的な作業）。
+**Total Estimated Effort:** 20-38 hours (approx. 2.5-5 days of focused work).
 
 ### VII. Data Validation and Sanitization (New Section)
 
