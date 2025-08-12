@@ -96,6 +96,7 @@ Here are some common ways to use `scat`.
 
 | Flag      | Description                                      |
 | --------- | ------------------------------------------------ |
+| `--config <path>` | Specify an alternative path for the configuration file. |
 | `--profile <name>` | Use a specific profile for the command.          |
 | `--debug`   | Enable verbose debug logging.                    |
 | `--silent`  | Suppress success messages.                       |
