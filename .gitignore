@@ -37,3 +37,6 @@ go.work.sum
 
 # External files
 .external/**
+
+# Test data
+testdata/

@@ -5,11 +5,11 @@ package provider
 
 // GetConversationHistoryOptions defines the parameters for a GetConversationHistory call.
 type GetConversationHistoryOptions struct {
-	ChannelID string // Required
-	Latest    string // Optional
-	Oldest    string // Optional
-	Limit     int    // Optional
-	Cursor    string // Optional
+	ChannelName string // Required
+	Latest      string // Optional
+	Oldest      string // Optional
+	Limit       int    // Optional
+	Cursor      string // Optional
 }
 
 // ConversationHistoryResponse represents the response from a conversation history API call.
@@ -27,45 +27,45 @@ type UserInfoResponse struct {
 
 // Message represents a single message in a channel.
 type Message struct {
-	Type      string
-	Timestamp string
-	UserID    string
-	Text      string
-	Files     []File
+	Type      string `json:"type"`
+	Timestamp string `json:"ts"`
+	UserID    string `json:"user"`
+	Text      string `json:"text"`
+	Files     []File `json:"files,omitempty"`
 }
 
 // File represents a file attached to a message.
 type File struct {
-	ID                 string
-	Created            int
-	Timestamp          int
-	Name               string
-	Title              string
-	Mimetype           string
-	Filetype           string
-	PrettyType         string
-	User               string
-	Editable           bool
-	Size               int
-	Mode               string
-	IsExternal         bool
-	ExternalType       string
-	IsPublic           bool
-	PublicURLShared    bool
-	DisplayAsBot       bool
-	Username           string
+	ID                 string `json:"id"`
+	Created            int    `json:"created"`
+	Timestamp          int    `json:"timestamp"`
+	Name               string `json:"name"`
+	Title              string `json:"title"`
+	Mimetype           string `json:"mimetype"`
+	Filetype           string `json:"filetype"`
+	PrettyType         string `json:"pretty_type"`
+	User               string `json:"user"`
+	Editable           bool   `json:"editable"`
+	Size               int    `json:"size"`
+	Mode               string `json:"mode"`
+	IsExternal         bool   `json:"is_external"`
+	ExternalType       string `json:"external_type"`
+	IsPublic           bool   `json:"is_public"`
+	PublicURLShared    bool   `json:"public_url_shared"`
+	DisplayAsBot       bool   `json:"display_as_bot"`
+	Username           string `json:"username"`
 	URLPrivate         string `json:"url_private"`
 	URLPrivateDownload string `json:"url_private_download"`
-	Permalink          string
+	Permalink          string `json:"permalink"`
 	PermalinkPublic    string `json:"permalink_public"`
 }
 
 // User represents a user.
 type User struct {
-	ID       string
-	TeamID   string
-	Name     string
-	RealName string
+	ID       string `json:"id"`
+	TeamID   string `json:"team_id"`
+	Name     string `json:"name"`
+	RealName string `json:"real_name"`
 }
 
 // ResponseMetadata contains metadata about the response, like cursors for pagination.

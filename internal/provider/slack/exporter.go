@@ -17,8 +17,14 @@ func (p *Provider) LogExporter() provider.LogExporter {
 // --- LogExporter Methods ---
 
 func (p *Provider) GetConversationHistory(opts provider.GetConversationHistoryOptions) (*provider.ConversationHistoryResponse, error) {
+	// Resolve channel name to ID before making the API call.
+	channelID, err := p.ResolveChannelID(opts.ChannelName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve channel ID for \"%s\": %w", opts.ChannelName, err)
+	}
+
 	params := url.Values{}
-	params.Add("channel", opts.ChannelID)
+	params.Add("channel", channelID)
 	if opts.Latest != "" {
 		params.Add("latest", opts.Latest)
 	}

@@ -6,10 +6,10 @@ import (
 	"strings"
 )
 
-// getChannelID ensures a channel ID is returned for a given name.
+// ResolveChannelID ensures a channel ID is returned for a given name.
 // It first checks the local cache. If the name is not found, it refreshes
 // the cache from the API and checks again.
-func (p *Provider) getChannelID(name string) (string, error) {
+func (p *Provider) ResolveChannelID(name string) (string, error) {
 	// First, try to get the ID from the existing cache.
 	id, err := p.getCachedChannelID(name)
 	if err == nil {

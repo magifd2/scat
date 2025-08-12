@@ -70,11 +70,16 @@ func (p *Provider) ListChannels() ([]string, error) {
 	return nil, fmt.Errorf("ListChannels is not supported by the mock provider")
 }
 
+// ResolveChannelID returns the channel name as its ID for mocking purposes.
+func (p *Provider) ResolveChannelID(name string) (string, error) {
+	return name, nil
+}
+
 // --- LogExporter Methods ---
 
 func (p *Provider) GetConversationHistory(opts provider.GetConversationHistoryOptions) (*provider.ConversationHistoryResponse, error) {
 	if !p.Context.Silent {
-		fmt.Fprintf(os.Stderr, "--- [MOCK] GetConversationHistory called for channel %s ---\\n", opts.ChannelID)
+		fmt.Fprintf(os.Stderr, "--- [MOCK] GetConversationHistory called for channel %s ---\n", opts.ChannelName)
 	}
 	// Return a dummy response for testing
 	resp := &provider.ConversationHistoryResponse{

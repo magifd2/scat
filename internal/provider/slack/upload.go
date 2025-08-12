@@ -68,7 +68,7 @@ func (p *Provider) PostFile(filePath, filename, filetype, comment, overrideUsern
 	}
 
 	// Step 3: Complete the upload
-	channelID, err := p.getChannelID(p.Profile.Channel)
+	channelID, err := p.ResolveChannelID(p.Profile.Channel)
 	if err != nil {
 		return err
 	}

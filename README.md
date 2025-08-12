@@ -9,7 +9,7 @@
 - **Post text messages**: Send content from arguments, files, or stdin.
 - **Upload files**: Upload files from a path or stdin.
 - **Stream content**: Continuously stream from stdin, posting messages periodically.
-- **Export channel logs**: Export message history from a channel to a structured JSON file.
+- **Export channel logs**: Export message history from a channel to a structured JSON file or stdout.
 - **Profile management**: Configure multiple destinations and switch between them easily.
 - **Extensible providers**: Currently supports Slack and a mock provider for testing.
 
@@ -68,9 +68,6 @@ Here are some common ways to use `scat`.
 -   **From standard input (pipe)**:
     `echo "This message was piped." | scat post`
 
--   **Streaming from standard input**:
-    `tail -f /var/log/system.log | scat post --stream`
-
 ### Uploading Files (`upload`)
 
 -   **Upload a file from a path**:
@@ -79,16 +76,19 @@ Here are some common ways to use `scat`.
 -   **Upload with a comment**:
     `scat upload --file ./screenshot.png -m "Here is the screenshot you requested."`
 
--   **Upload from standard input**:
-    `cat data.csv | scat upload --file - --filename data.csv`
-
 ### Exporting Channel Logs (`export log`)
 
--   **Export a channel's history to a JSON file**:
-    `scat export log --channel "#random"`
+-   **Export to stdout and pipe to `jq`**:
+    `scat export log --channel "#random" | jq .`
 
--   **Export with a specific time range and include attached files**:
-    `scat export log -c "#random" --start-time "2023-01-01T00:00:00Z" --include-files`
+-   **Export to a specific file**:
+    `scat export log -c "#random" --output "my-export.json"`
+
+-   **Export and download attached files to an auto-generated directory**:
+    `scat export log -c "#random" --output-files auto`
+
+-   **Export log to stdout and download files to a specific directory**:
+    `scat export log -c "#random" --output - --output-files "./attachments"`
 
 ## Command Reference
 
@@ -138,11 +138,11 @@ Here are some common ways to use `scat`.
 | Flag            | Shorthand | Description                                      |
 | --------------- | --------- | ------------------------------------------------ |
 | `--channel`     | `-c`      | **Required.** Channel to export from.            |
+| `--output`      |           | Output file path for the log. Use `-` for stdout (default). |
+| `--output-files`|           | Directory to save downloaded files. If set to `auto`, a directory is auto-generated. If not set, files are not downloaded. |
+| `--output-format` |         | Output format (`json` or `text`).                |
 | `--start-time`  |           | Start of time range (RFC3339 format).            |
 | `--end-time`    |           | End of time range (RFC3339 format).              |
-| `--include-files` |         | Download attached files into the output directory. |
-| `--output-dir`  |           | Directory to save exported files.                |
-| `--output-format` |         | Output format (`json` or `text`).                |
 
 ### `profile` Subcommands
 

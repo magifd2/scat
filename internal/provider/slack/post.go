@@ -13,7 +13,7 @@ func (p *Provider) PostMessage(text, overrideUsername, iconEmoji string) error {
 		fmt.Fprintln(os.Stderr, "[DEBUG] PostMessage called with Debug mode ON.")
 	}
 
-	channelID, err := p.getChannelID(p.Profile.Channel)
+	channelID, err := p.ResolveChannelID(p.Profile.Channel)
 	if err != nil {
 		return err
 	}
@@ -40,13 +40,13 @@ func (p *Provider) PostMessage(text, overrideUsername, iconEmoji string) error {
 		// Check if the error is 'not_in_channel'
 		if strings.Contains(err.Error(), "slack API error: not_in_channel") {
 			if !p.Context.Silent {
-				fmt.Fprintf(os.Stderr, "Bot not in channel '%s'. Attempting to join...\n", p.Profile.Channel)
+				fmt.Fprintf(os.Stderr, "Bot not in channel \"%s\". Attempting to join...\n", p.Profile.Channel)
 			}
 			if joinErr := p.joinChannel(channelID); joinErr != nil {
-				return fmt.Errorf("failed to join channel '%s': %w", p.Profile.Channel, joinErr)
+				return fmt.Errorf("failed to join channel \"%s\": %w", p.Profile.Channel, joinErr)
 			}
 			if !p.Context.Silent {
-				fmt.Fprintf(os.Stderr, "Successfully joined channel '%s'. Retrying post...\n", p.Profile.Channel)
+				fmt.Fprintf(os.Stderr, "Successfully joined channel \"%s\". Retrying post...\n", p.Profile.Channel)
 			}
 			// Retry post after joining
 			_, retryErr := p.sendRequest("POST", postMessageURL, bytes.NewBuffer(jsonPayload), "application/json; charset=utf-8")

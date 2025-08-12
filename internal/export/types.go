@@ -9,11 +9,12 @@ type ExportedLog struct {
 
 // ExportedMessage represents a single message in the exported log.
 type ExportedMessage struct {
-	UserID    string         `json:"user_id"`
-	UserName  string         `json:"user_name,omitempty"`
-	Timestamp string         `json:"timestamp"`
-	Text      string         `json:"text"`
-	Files     []ExportedFile `json:"files,omitempty"`
+	UserID        string         `json:"user_id"`
+	UserName      string         `json:"user_name,omitempty"`
+	Timestamp     string         `json:"timestamp"`
+	TimestampUnix string         `json:"timestamp_unix"`
+	Text          string         `json:"text"`
+	Files         []ExportedFile `json:"files,omitempty"`
 }
 
 // ExportedFile represents a file attached to a message in the exported log.
@@ -26,7 +27,7 @@ type ExportedFile struct {
 
 // Options defines the parameters for an export operation.
 type Options struct {
-	ChannelID    string
+	ChannelName  string
 	StartTime    string
 	EndTime      string
 	IncludeFiles bool

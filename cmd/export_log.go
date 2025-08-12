@@ -3,8 +3,9 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
-	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/magifd2/scat/internal/appcontext"
@@ -16,7 +17,7 @@ import (
 var exportLogCmd = &cobra.Command{
 	Use:   "log",
 	Short: "Export a channel log",
-	Long:  `Exports a channel log from a supported provider, saving messages and optionally files to a local directory.`,
+	Long:  `Exports a channel log from a supported provider, saving messages and optionally files to a local directory.`, 
 	RunE: func(cmd *cobra.Command, args []string) error {
 		appCtx := cmd.Context().Value(appcontext.CtxKey).(appcontext.Context)
 
@@ -51,12 +52,26 @@ var exportLogCmd = &cobra.Command{
 		}
 
 		// Get flags
-		channel, _ := cmd.Flags().GetString("channel")
+		channelName, _ := cmd.Flags().GetString("channel")
 		startTimeStr, _ := cmd.Flags().GetString("start-time")
 		endTimeStr, _ := cmd.Flags().GetString("end-time")
-		includeFiles, _ := cmd.Flags().GetBool("include-files")
-		outputDir, _ := cmd.Flags().GetString("output-dir")
+		outputFile, _ := cmd.Flags().GetString("output")
+		outputFiles, _ := cmd.Flags().GetString("output-files")
 		outputFormat, _ := cmd.Flags().GetString("output-format")
+
+		// Determine file output behavior
+		includeFiles := outputFiles != ""
+		filesDir := ""
+		if includeFiles {
+			if outputFiles == "auto" {
+				filesDir = fmt.Sprintf("./scat-export-%s-%s", strings.TrimPrefix(channelName, "#"), time.Now().UTC().Format("20060102T150405Z"))
+			} else {
+				filesDir = outputFiles
+			}
+			if err := os.MkdirAll(filesDir, 0700); err != nil {
+				return fmt.Errorf("failed to create files directory %s: %w", filesDir, err)
+			}
+		}
 
 		// Parse timestamps
 		startTime, err := parseTime(startTimeStr)
@@ -69,23 +84,25 @@ var exportLogCmd = &cobra.Command{
 		}
 
 		if !appCtx.Silent {
-			fmt.Fprintf(os.Stderr, "> Exporting messages from %s to %s (UTC: %s to %s)\n",
-				displayTime(startTime), displayTime(endTime),
-				startTime.UTC().Format(time.RFC3339), endTime.UTC().Format(time.RFC3339))
-		}
-
-		if outputDir == "" {
-			outputDir = fmt.Sprintf("./scat-export-%s", time.Now().UTC().Format("20060102T150405Z"))
+			var timeRangeStr strings.Builder
+			timeRangeStr.WriteString("for all time")
+			if !startTime.IsZero() || !endTime.IsZero() {
+				timeRangeStr.Reset()
+				timeRangeStr.WriteString(fmt.Sprintf("from %s to %s (UTC: %s to %s)",
+					displayTime(startTime, "(beginning of time)"), displayTime(endTime, "now"),
+					displayTime(startTime.UTC(), "(beginning of time)"), displayTime(endTime.UTC(), "now")))
+			}
+			fmt.Fprintf(os.Stderr, "Exporting messages for channel %s %s\n", channelName, timeRangeStr.String())
 		}
 
 		// Create exporter and run
 		exporter := export.NewExporter(prov.LogExporter())
 		opts := export.Options{
-			ChannelID:    channel,
-			StartTime:    startTimeStr,
-			EndTime:      endTimeStr,
+			ChannelName:  channelName,
+			StartTime:    toUnixTimestampString(startTime),
+			EndTime:      toUnixTimestampString(endTime),
 			IncludeFiles: includeFiles,
-			OutputDir:    outputDir,
+			OutputDir:    filesDir, // Pass the determined directory to the exporter
 			OutputFormat: outputFormat,
 		}
 
@@ -94,25 +111,63 @@ var exportLogCmd = &cobra.Command{
 			return fmt.Errorf("failed to export log: %w", err)
 		}
 
-		// Save the log to a file
-		logFileName := fmt.Sprintf("export-%s-%s.json", exportedLog.ChannelName, time.Now().UTC().Format("20060102T150405Z"))
-		logFilePath := filepath.Join(outputDir, logFileName)
-		logFile, err := os.Create(logFilePath)
-		if err != nil {
-			return fmt.Errorf("failed to create log file: %w", err)
-		}
-		defer logFile.Close()
-
-		encoder := json.NewEncoder(logFile)
-		encoder.SetIndent("", "  ")
-		if err := encoder.Encode(exportedLog); err != nil {
-			return fmt.Errorf("failed to write log file: %w", err)
+		// Save the log to the specified output
+		if err := saveExportedLog(exportedLog, outputFile, outputFormat); err != nil {
+			return err
 		}
 
-		fmt.Fprintf(os.Stderr, "Log export completed successfully. Files saved in %s\n", outputDir)
+		// Construct and print the final status message
+		if !appCtx.Silent {
+			var parts []string
+			parts = append(parts, "Log export completed successfully.")
+			if outputFile != "-" && outputFile != "" {
+				parts = append(parts, fmt.Sprintf("Log saved to %s.", outputFile))
+			}
+			if includeFiles {
+				parts = append(parts, fmt.Sprintf("Files saved in %s.", filesDir))
+			}
+			fmt.Fprintln(os.Stderr, strings.Join(parts, " "))
+		}
 
 		return nil
 	},
+}
+
+func saveExportedLog(log *export.ExportedLog, outputFile, format string) error {
+	// Determine output writer
+	var writer io.Writer
+	if outputFile == "-" || outputFile == "" {
+		writer = os.Stdout
+	} else {
+		// Use OpenFile to create with specific permissions
+		f, err := os.OpenFile(outputFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+		if err != nil {
+			return fmt.Errorf("failed to create output file: %w", err)
+		}
+		defer f.Close()
+		writer = f
+	}
+
+	switch format {
+	case "json":
+		encoder := json.NewEncoder(writer)
+		encoder.SetIndent("", "  ")
+		return encoder.Encode(log)
+	case "text":
+		var content strings.Builder
+		content.WriteString(fmt.Sprintf("# Log export for channel %s on %s\n", log.ChannelName, log.ExportTimestamp))
+		for _, msg := range log.Messages {
+			content.WriteString("---\n")
+			content.WriteString(fmt.Sprintf("[%s] %s: %s\n", msg.Timestamp, msg.UserName, msg.Text))
+			for _, file := range msg.Files {
+				content.WriteString(fmt.Sprintf("  - Attachment: %s (saved to: %s)\n", file.Name, file.LocalPath))
+			}
+		}
+		_, err := writer.Write([]byte(content.String()))
+		return err
+	default:
+		return fmt.Errorf("unsupported output format: %s", format)
+	}
 }
 
 func init() {
@@ -122,11 +177,11 @@ func init() {
 	exportLogCmd.Flags().StringP("channel", "c", "", "Channel to export from (required)")
 	exportLogCmd.MarkFlagRequired("channel")
 
+	exportLogCmd.Flags().String("output", "-", "Output file path for the log. Use '-' for stdout.")
+	exportLogCmd.Flags().String("output-files", "", "Directory to save downloaded files. If set to 'auto', a directory is auto-generated.")
 	exportLogCmd.Flags().String("output-format", "json", "Output format (json or text)")
 	exportLogCmd.Flags().String("start-time", "", "Start of time range (RFC3339 format, e.g., 2023-01-01T15:04:05Z)")
 	exportLogCmd.Flags().String("end-time", "", "End of time range (RFC3339 format)")
-	exportLogCmd.Flags().Bool("include-files", false, "Download attached files")
-	exportLogCmd.Flags().String("output-dir", "", "Directory to save exported files (defaults to ./scat-export-<UTC-timestamp>/)")
 }
 
 // parseTime parses a string into a time.Time object.
@@ -144,10 +199,18 @@ func parseTime(timeStr string) (time.Time, error) {
 	return time.Parse("2006-01-02T15:04:05", timeStr)
 }
 
-// displayTime formats a time for display, showing timezone info.
-func displayTime(t time.Time) string {
+// displayTime formats a time for display, showing a fallback if the time is zero.
+func displayTime(t time.Time, fallback string) string {
 	if t.IsZero() {
-		return "(not set)"
+		return fallback
 	}
 	return t.Format(time.RFC3339)
+}
+
+// toUnixTimestampString converts a time.Time object to a Slack-compatible Unix timestamp string.
+func toUnixTimestampString(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	return fmt.Sprintf("%d.000000", t.Unix())
 }
