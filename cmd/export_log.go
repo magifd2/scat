@@ -177,7 +177,13 @@ func init() {
 
 	exportLogCmd.Flags().StringP("profile", "p", "", "Profile to use for this export")
 	exportLogCmd.Flags().StringP("channel", "c", "", "Channel to export from (required)")
-	exportLogCmd.MarkFlagRequired("channel")
+	// MarkFlagRequired returns an error only if the flag does not exist, which is a programming error.
+	// In a real application, this would be handled more robustly, but for a CLI, a panic is acceptable here.
+	// However, to avoid panic, we can log and exit.
+	if err := exportLogCmd.MarkFlagRequired("channel"); err != nil {
+		fmt.Fprintf(os.Stderr, "Error marking flag required: %v\n", err)
+		os.Exit(1)
+	}
 
 	exportLogCmd.Flags().String("output", "-", "Output file path for the log. Use '-' for stdout.")
 	exportLogCmd.Flags().String("output-files", "", "Directory to save downloaded files. If set to 'auto', a directory is auto-generated.")
