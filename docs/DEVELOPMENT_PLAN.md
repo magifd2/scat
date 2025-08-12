@@ -6,7 +6,15 @@ This document outlines the development status and future roadmap for `scat`.
 
 ## Completed Milestones
 
-### v1.2.0 (In Progress)
+### v1.4.0
+
+-   **Configurable Config Path**: Implemented the `--config` global option to specify an alternative path for the configuration file, overriding the default `~/.config/scat/config.json`.
+
+### v1.3.0
+
+-   **Provider Interface Refactoring**: Adopted the "Options Struct" pattern for `PostMessage` and `PostFile` methods to improve consistency and extensibility across the provider interface.
+
+### v1.2.0
 
 -   **Log Export Feature**: Implemented the `scat export log` command.
     -   Supports JSON and plain text output formats.
