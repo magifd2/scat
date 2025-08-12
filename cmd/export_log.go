@@ -104,7 +104,7 @@ var exportLogCmd = &cobra.Command{
 			OutputDir:    filesDir,
 		}
 
-		exportedLog, err := prov.LogExporter().ExportLog(opts)
+		exportedLog, err := prov.ExportLog(opts)
 		if err != nil {
 			return fmt.Errorf("failed to export log: %w", err)
 		}

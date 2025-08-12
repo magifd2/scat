@@ -32,11 +32,6 @@ func (p *Provider) Capabilities() provider.Capabilities {
 	}
 }
 
-// LogExporter returns the log exporter implementation for the mock provider.
-func (p *Provider) LogExporter() provider.LogExporter {
-	return p
-}
-
 // PostMessage prints a mock message.
 func (p *Provider) PostMessage(text, overrideUsername, iconEmoji string) error {
 	if !p.Context.Silent {
@@ -64,11 +59,6 @@ func (p *Provider) PostFile(filePath, filename, filetype, comment, overrideUsern
 // ListChannels returns an error as it's not supported.
 func (p *Provider) ListChannels() ([]string, error) {
 	return nil, fmt.Errorf("ListChannels is not supported by the mock provider")
-}
-
-// ResolveChannelID returns the channel name as its ID for mocking purposes.
-func (p *Provider) ResolveChannelID(name string) (string, error) {
-	return name, nil
 }
 
 // ExportLog returns a dummy log for testing.

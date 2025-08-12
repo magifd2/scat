@@ -7,21 +7,15 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/magifd2/scat/internal/export"
-	"github.com/magifd2/scat/internal/provider"
+	"github.com/magifd2/scat/internal/util"
 )
 
 var mentionRegex = regexp.MustCompile(`<@(U[A-Z0-9]+)>`)
-
-// LogExporter returns the log exporter implementation for Slack.
-func (p *Provider) LogExporter() provider.LogExporter {
-	return p // The Provider itself implements the LogExporter interface
-}
 
 // ExportLog performs the entire export operation for Slack.
 func (p *Provider) ExportLog(opts export.Options) (*export.ExportedLog, error) {
@@ -45,24 +39,24 @@ func (p *Provider) ExportLog(opts export.Options) (*export.ExportedLog, error) {
 		for _, msg := range resp.Messages {
 			userName, err := p.resolveUserName(msg.UserID, userCache, &userCacheMux)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Warning: could not resolve user %s: %v\n", msg.UserID, err)
+					fmt.Fprintf(os.Stderr, "Warning: could not resolve user %s: %v\n", msg.UserID, err)
 			}
 
 			files, err := p.handleAttachedFiles(msg.Files, opts.OutputDir, opts.IncludeFiles)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Warning: could not process files for message %s: %v\n", msg.Timestamp, err)
+					fmt.Fprintf(os.Stderr, "Warning: could not process files for message %s: %v\n", msg.Timestamp, err)
 			}
 
 			resolvedText, err := p.resolveMentions(msg.Text, userCache, &userCacheMux)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Warning: could not resolve mentions in message %s: %v\n", msg.Timestamp, err)
-				resolvedText = msg.Text
+					fmt.Fprintf(os.Stderr, "Warning: could not resolve mentions in message %s: %v\n", msg.Timestamp, err)
+					resolvedText = msg.Text
 			}
 
-			rfc3339Time, err := toRFC3339(msg.Timestamp)
+			rfc3339Time, err := util.ToRFC3339(msg.Timestamp)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Warning: could not parse timestamp %s: %v\n", msg.Timestamp, err)
-				rfc3339Time = ""
+					fmt.Fprintf(os.Stderr, "Warning: could not parse timestamp %s: %v\n", msg.Timestamp, err)
+					rfc3339Time = ""
 			}
 
 			exportedMsg := export.ExportedMessage{
@@ -205,18 +199,4 @@ func (p *Provider) handleAttachedFiles(files []file, outputDir string, download 
 		exportedFiles = append(exportedFiles, exportedFile)
 	}
 	return exportedFiles, nil
-}
-
-func toRFC3339(unixTs string) (string, error) {
-	if unixTs == "" {
-		return "", nil
-	}
-	floatTs, err := strconv.ParseFloat(unixTs, 64)
-	if err != nil {
-		return "", err
-	}
-	sec := int64(floatTs)
-	nsec := int64((floatTs - float64(sec)) * 1e9)
-	t := time.Unix(sec, nsec)
-	return t.UTC().Format(time.RFC3339), nil
 }

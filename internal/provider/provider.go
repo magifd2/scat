@@ -10,12 +10,6 @@ type Capabilities struct {
 	CanExportLogs   bool // Whether the provider can export channel logs.
 }
 
-// LogExporter defines the interface for exporting channel logs.
-// The provider is responsible for the entire export process.
-type LogExporter interface {
-	ExportLog(opts export.Options) (*export.ExportedLog, error)
-}
-
 // Interface defines the methods that a provider must implement.
 type Interface interface {
 	// Capabilities returns a struct indicating supported features.
@@ -30,7 +24,7 @@ type Interface interface {
 	// ListChannels lists available channels for the provider.
 	ListChannels() ([]string, error)
 
-	// LogExporter returns the log exporter implementation.
+	// ExportLog performs the entire export operation.
 	// This should only be called if Capabilities().CanExportLogs is true.
-	LogExporter() LogExporter
+	ExportLog(opts export.Options) (*export.ExportedLog, error)
 }
