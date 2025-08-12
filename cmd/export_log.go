@@ -95,18 +95,16 @@ var exportLogCmd = &cobra.Command{
 			fmt.Fprintf(os.Stderr, "Exporting messages for channel %s %s\n", channelName, timeRangeStr.String())
 		}
 
-		// Create exporter and run
-		exporter := export.NewExporter(prov.LogExporter())
+		// Create options and run the export
 		opts := export.Options{
 			ChannelName:  channelName,
 			StartTime:    toUnixTimestampString(startTime),
 			EndTime:      toUnixTimestampString(endTime),
 			IncludeFiles: includeFiles,
-			OutputDir:    filesDir, // Pass the determined directory to the exporter
-			OutputFormat: outputFormat,
+			OutputDir:    filesDir,
 		}
 
-		exportedLog, err := exporter.ExportLog(opts)
+		exportedLog, err := prov.LogExporter().ExportLog(opts)
 		if err != nil {
 			return fmt.Errorf("failed to export log: %w", err)
 		}

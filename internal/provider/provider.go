@@ -1,5 +1,7 @@
 package provider
 
+import "github.com/magifd2/scat/internal/export"
+
 // Capabilities defines what features a provider supports.
 type Capabilities struct {
 	CanListChannels bool // Whether the provider can list channels.
@@ -9,11 +11,9 @@ type Capabilities struct {
 }
 
 // LogExporter defines the interface for exporting channel logs.
-// This is separated from the main Interface to avoid bloating it with a large, optional feature set.
+// The provider is responsible for the entire export process.
 type LogExporter interface {
-	GetConversationHistory(opts GetConversationHistoryOptions) (*ConversationHistoryResponse, error)
-	GetUserInfo(userID string) (*UserInfoResponse, error)
-	DownloadFile(fileURL string) ([]byte, error)
+	ExportLog(opts export.Options) (*export.ExportedLog, error)
 }
 
 // Interface defines the methods that a provider must implement.

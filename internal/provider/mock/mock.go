@@ -3,9 +3,11 @@ package mock
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/magifd2/scat/internal/appcontext"
 	"github.com/magifd2/scat/internal/config"
+	"github.com/magifd2/scat/internal/export"
 	"github.com/magifd2/scat/internal/provider"
 )
 
@@ -61,12 +63,6 @@ func (p *Provider) PostFile(filePath, filename, filetype, comment, overrideUsern
 
 // ListChannels returns an error as it's not supported.
 func (p *Provider) ListChannels() ([]string, error) {
-	if !p.Context.Silent {
-		fmt.Fprintln(os.Stderr, "--- [MOCK] ListChannels called ---")
-	}
-	if p.Context.Debug {
-		fmt.Fprintln(os.Stderr, "[DEBUG] Mock ListChannels called")
-	}
 	return nil, fmt.Errorf("ListChannels is not supported by the mock provider")
 }
 
@@ -75,40 +71,22 @@ func (p *Provider) ResolveChannelID(name string) (string, error) {
 	return name, nil
 }
 
-// --- LogExporter Methods ---
-
-func (p *Provider) GetConversationHistory(opts provider.GetConversationHistoryOptions) (*provider.ConversationHistoryResponse, error) {
+// ExportLog returns a dummy log for testing.
+func (p *Provider) ExportLog(opts export.Options) (*export.ExportedLog, error) {
 	if !p.Context.Silent {
-		fmt.Fprintf(os.Stderr, "--- [MOCK] GetConversationHistory called for channel %s ---\n", opts.ChannelName)
+		fmt.Fprintf(os.Stderr, "--- [MOCK] ExportLog called for channel %s ---\n", opts.ChannelName)
 	}
-	// Return a dummy response for testing
-	resp := &provider.ConversationHistoryResponse{
-		Messages: []provider.Message{
-			{Type: "message", Timestamp: "1672531200.000000", UserID: "U012AB3CDE", Text: "Hello from mock"},
+	return &export.ExportedLog{
+		ExportTimestamp: time.Now().UTC().Format(time.RFC3339),
+		ChannelName:     opts.ChannelName,
+		Messages: []export.ExportedMessage{
+			{
+				UserID:        "U012AB3CDE",
+				UserName:      "Mock User",
+				Timestamp:     time.Now().UTC().Format(time.RFC3339),
+				TimestampUnix: fmt.Sprintf("%d.000000", time.Now().Unix()),
+				Text:          "Hello from mock exporter!",
+			},
 		},
-		HasMore:    false,
-		NextCursor: "",
-	}
-	return resp, nil
-}
-
-func (p *Provider) GetUserInfo(userID string) (*provider.UserInfoResponse, error) {
-	if !p.Context.Silent {
-		fmt.Fprintln(os.Stderr, "--- [MOCK] GetUserInfo called ---")
-	}
-	resp := &provider.UserInfoResponse{
-		User: provider.User{
-			ID:       userID,
-			Name:     fmt.Sprintf("mockuser_%s", userID),
-			RealName: fmt.Sprintf("Mock User %s", userID),
-		},
-	}
-	return resp, nil
-}
-
-func (p *Provider) DownloadFile(fileURL string) ([]byte, error) {
-	if !p.Context.Silent {
-		fmt.Fprintln(os.Stderr, "--- [MOCK] DownloadFile called ---")
-	}
-	return []byte("mock file content for " + fileURL), nil
+	}, nil
 }

@@ -33,7 +33,7 @@ func (p *Provider) populateChannelCache() error {
 			return err
 		}
 
-		var listResp apiResponse
+		var listResp conversationsListResponse
 		if err := json.Unmarshal(body, &listResp); err != nil {
 			return fmt.Errorf("failed to unmarshal conversations.list response: %w", err)
 		}

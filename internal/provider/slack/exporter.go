@@ -5,45 +5,110 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
+	"github.com/magifd2/scat/internal/export"
 	"github.com/magifd2/scat/internal/provider"
 )
+
+var mentionRegex = regexp.MustCompile(`<@(U[A-Z0-9]+)>`)
 
 // LogExporter returns the log exporter implementation for Slack.
 func (p *Provider) LogExporter() provider.LogExporter {
 	return p // The Provider itself implements the LogExporter interface
 }
 
-// --- LogExporter Methods ---
+// ExportLog performs the entire export operation for Slack.
+func (p *Provider) ExportLog(opts export.Options) (*export.ExportedLog, error) {
+	var exportedMessages []export.ExportedMessage
+	cursor := ""
+	userCache := make(map[string]string)
+	var userCacheMux sync.Mutex
 
-func (p *Provider) GetConversationHistory(opts provider.GetConversationHistoryOptions) (*provider.ConversationHistoryResponse, error) {
-	// Resolve channel name to ID before making the API call.
+	// Resolve channel name to ID
 	channelID, err := p.ResolveChannelID(opts.ChannelName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve channel ID for \"%s\": %w", opts.ChannelName, err)
 	}
 
+	for {
+		resp, err := p.getConversationHistory(channelID, opts, cursor)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, msg := range resp.Messages {
+			userName, err := p.resolveUserName(msg.UserID, userCache, &userCacheMux)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: could not resolve user %s: %v\n", msg.UserID, err)
+			}
+
+			files, err := p.handleAttachedFiles(msg.Files, opts.OutputDir, opts.IncludeFiles)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: could not process files for message %s: %v\n", msg.Timestamp, err)
+			}
+
+			resolvedText, err := p.resolveMentions(msg.Text, userCache, &userCacheMux)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: could not resolve mentions in message %s: %v\n", msg.Timestamp, err)
+				resolvedText = msg.Text
+			}
+
+			rfc3339Time, err := toRFC3339(msg.Timestamp)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: could not parse timestamp %s: %v\n", msg.Timestamp, err)
+				rfc3339Time = ""
+			}
+
+			exportedMsg := export.ExportedMessage{
+				UserID:        msg.UserID,
+				UserName:      userName,
+				Timestamp:     rfc3339Time,
+				TimestampUnix: msg.Timestamp,
+				Text:          resolvedText,
+				Files:         files,
+			}
+			exportedMessages = append(exportedMessages, exportedMsg)
+		}
+
+		if !resp.HasMore {
+			break
+		}
+		cursor = resp.ResponseMetadata.NextCursor
+	}
+
+	// Reverse messages
+	for i, j := 0, len(exportedMessages)-1; i < j; i, j = i+1, j-1 {
+		exportedMessages[i], exportedMessages[j] = exportedMessages[j], exportedMessages[i]
+	}
+
+	return &export.ExportedLog{
+		ExportTimestamp: time.Now().UTC().Format(time.RFC3339),
+		ChannelName:     opts.ChannelName,
+		Messages:        exportedMessages,
+	}, nil
+}
+
+func (p *Provider) getConversationHistory(channelID string, opts export.Options, cursor string) (*conversationsHistoryResponse, error) {
 	params := url.Values{}
 	params.Add("channel", channelID)
-	if opts.Latest != "" {
-		params.Add("latest", opts.Latest)
+	if opts.EndTime != "" {
+		params.Add("latest", opts.EndTime)
 	}
-	if opts.Oldest != "" {
-		params.Add("oldest", opts.Oldest)
+	if opts.StartTime != "" {
+		params.Add("oldest", opts.StartTime)
 	}
-	if opts.Limit > 0 {
-		params.Add("limit", strconv.Itoa(opts.Limit))
+	if cursor != "" {
+		params.Add("cursor", cursor)
 	}
-	if opts.Cursor != "" {
-		params.Add("cursor", opts.Cursor)
-	}
+	params.Add("limit", "200")
 
-	// First attempt to get history
 	respBody, err := p.sendRequest("GET", conversationsHistoryURL+"?"+params.Encode(), nil, "")
-
-	// If the bot is not in the channel, join and retry.
 	if err != nil && strings.Contains(err.Error(), "not_in_channel") {
 		if !p.Context.Silent {
 			fmt.Fprintf(os.Stderr, "Bot not in channel '%s'. Attempting to join...\n", opts.ChannelName)
@@ -54,7 +119,6 @@ func (p *Provider) GetConversationHistory(opts provider.GetConversationHistoryOp
 		if !p.Context.Silent {
 			fmt.Fprintf(os.Stderr, "Successfully joined channel '%s'. Retrying...\n", opts.ChannelName)
 		}
-		// Retry the request
 		respBody, err = p.sendRequest("GET", conversationsHistoryURL+"?"+params.Encode(), nil, "")
 	}
 
@@ -66,36 +130,93 @@ func (p *Provider) GetConversationHistory(opts provider.GetConversationHistoryOp
 	if err := json.Unmarshal(respBody, &slackResp); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal conversations.history response: %w", err)
 	}
-
-	// Convert Slack-specific response to the provider-agnostic type
-	providerResp := &provider.ConversationHistoryResponse{
-		HasMore:          slackResp.HasMore,
-		NextCursor:       slackResp.ResponseMetadata.NextCursor,
-		ResponseMetadata: slackResp.ResponseMetadata,
-		Messages:         slackResp.Messages,
-	}
-
-	return providerResp, nil
+	return &slackResp, nil
 }
 
-func (p *Provider) GetUserInfo(userID string) (*provider.UserInfoResponse, error) {
-	params := url.Values{}
-	params.Add("user", userID)
+func (p *Provider) resolveUserName(userID string, cache map[string]string, mu *sync.Mutex) (string, error) {
+	if userID == "" {
+		return "", nil
+	}
+	mu.Lock()
+	name, ok := cache[userID]
+	mu.Unlock()
+	if ok {
+		return name, nil
+	}
 
-	respBody, err := p.sendRequest("GET", usersInfoURL+"?"+params.Encode(), nil, "")
+	respBody, err := p.sendRequest("GET", usersInfoURL+"?user="+userID, nil, "")
 	if err != nil {
-		return nil, fmt.Errorf("failed to call users.info: %w", err)
+		return "", err
+	}
+	var userInfoResp userInfoResponse
+	if err := json.Unmarshal(respBody, &userInfoResp); err != nil {
+		return "", err
 	}
 
-	var slackResp userInfoResponse
-	if err := json.Unmarshal(respBody, &slackResp); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal users.info response: %w", err)
+	name = userInfoResp.User.RealName
+	if name == "" {
+		name = userInfoResp.User.Name
 	}
 
-	return &provider.UserInfoResponse{User: slackResp.User}, nil
+	mu.Lock()
+	cache[userID] = name
+	mu.Unlock()
+	return name, nil
 }
 
-func (p *Provider) DownloadFile(fileURL string) ([]byte, error) {
-	// Note: This uses sendRequest which automatically adds the auth header.
-	return p.sendRequest("GET", fileURL, nil, "")
+func (p *Provider) resolveMentions(text string, cache map[string]string, mu *sync.Mutex) (string, error) {
+	var firstErr error
+	resolvedText := mentionRegex.ReplaceAllStringFunc(text, func(match string) string {
+		userID := mentionRegex.FindStringSubmatch(match)[1]
+		userName, err := p.resolveUserName(userID, cache, mu)
+		if err != nil {
+			if firstErr == nil {
+				firstErr = err
+			}
+			return match
+		}
+		return "@" + userName
+	})
+	return resolvedText, firstErr
+}
+
+func (p *Provider) handleAttachedFiles(files []file, outputDir string, download bool) ([]export.ExportedFile, error) {
+	var exportedFiles []export.ExportedFile
+	for _, f := range files {
+		exportedFile := export.ExportedFile{
+			ID:       f.ID,
+			Name:     f.Name,
+			Mimetype: f.Mimetype,
+		}
+		if download {
+			safeFilename := filepath.Base(f.Name)
+			localPath := filepath.Join(outputDir, f.ID+"_"+safeFilename)
+			fileData, err := p.sendRequest("GET", f.URLPrivateDownload, nil, "")
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: could not download file %s: %v\n", f.Name, err)
+				continue
+			}
+			if err := os.WriteFile(localPath, fileData, 0600); err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: could not save file %s: %v\n", f.Name, err)
+				continue
+			}
+			exportedFile.LocalPath = localPath
+		}
+		exportedFiles = append(exportedFiles, exportedFile)
+	}
+	return exportedFiles, nil
+}
+
+func toRFC3339(unixTs string) (string, error) {
+	if unixTs == "" {
+		return "", nil
+	}
+	floatTs, err := strconv.ParseFloat(unixTs, 64)
+	if err != nil {
+		return "", err
+	}
+	sec := int64(floatTs)
+	nsec := int64((floatTs - float64(sec)) * 1e9)
+	t := time.Unix(sec, nsec)
+	return t.UTC().Format(time.RFC3339), nil
 }

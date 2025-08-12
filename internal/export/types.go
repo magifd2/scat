@@ -32,5 +32,4 @@ type Options struct {
 	EndTime      string
 	IncludeFiles bool
 	OutputDir    string
-	OutputFormat string
 }
