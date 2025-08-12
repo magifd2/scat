@@ -120,3 +120,19 @@ These rules govern the safe use of development tools and file system operations 
 
 * **V-1. Language Policy**: The primary documentation will be in English (e.g., README.md). Other languages will be provided as auxiliary documentation with a language suffix (e.g., README.ja.md).  
 * **V-2. Maintenance**: When a feature is changed or added, ensure all relevant documentation (README.md, CHANGELOG.md, etc.) is updated accordingly.
+
+## **VI. Agent Operational Protocols (自己規律)**
+
+To prevent critical errors observed during the development of v1.2.0, the following operational protocols are mandatory for all future interactions. These supersede any general instructions where they conflict.
+
+### **VI-1. State-Aware Git Workflow (状態を意識したGitワークフロー)**
+- **Rule:** Before any state-changing Git command (`merge`, `push`, `tag`, `reset`, `branch`), the current state **must** be verified by running `git status && git branch` immediately prior to the operation.
+- **Reason:** To prevent operating on incorrect branches or assumptions about the repository's state.
+
+### **VI-2. Strict Adherence to Safety Protocols (安全プロトコルの厳守)**
+- **Rule:** The "Safe Code Modification Protocol" (IV-1) and "Safe Git Commit Procedure" (IV-3) are not optional guidelines but **mandatory, non-negotiable procedures**. All multi-line commits or complex file modifications **must** use the temporary file and diff method.
+- **Reason:** To eliminate syntax/escaping errors and ensure user verification before changes are applied.
+
+### **VI-3. Rigorous Verification Before Merging (マージ前の厳格な検証)**
+- **Rule:** A feature or fix is not considered "complete" until it has been functionally verified by the user. The standard workflow is: `Implement -> Build -> **Manual Test & User Confirmation** -> Commit -> Merge`. The "Manual Test & User Confirmation" step is mandatory and cannot be skipped.
+- **Reason:** To ensure the implemented code correctly solves the user's problem before it is integrated into the main branch.
