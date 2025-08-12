@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/magifd2/scat/internal/appcontext"
 	"github.com/magifd2/scat/internal/config"
 	"github.com/spf13/cobra"
 )
@@ -13,7 +14,14 @@ var listCmd = &cobra.Command{
 	Short: "List all available profiles",
 	Long:  `Lists all saved profiles and indicates which one is currently active.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		cfg, err := config.Load()
+		appCtx := cmd.Context().Value(appcontext.CtxKey).(appcontext.Context)
+		configPath, err := config.GetConfigPath(appCtx.ConfigPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to get config path: %v\n", err)
+			os.Exit(1)
+		}
+
+		cfg, err := config.Load(configPath)
 		if err != nil {
 			if os.IsNotExist(err) {
 				fmt.Fprintln(os.Stderr, "Configuration file not found. Please run 'scat config init' to create a default configuration.")

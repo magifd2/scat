@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/magifd2/scat/internal/appcontext"
 	"github.com/magifd2/scat/internal/config"
 	"github.com/spf13/cobra"
 )
@@ -13,7 +14,8 @@ var configInitCmd = &cobra.Command{
 	Short: "Initialize a new configuration file",
 	Long:  `Creates a new default configuration file at the default location (~/.config/scat/config.json). If a configuration file already exists, this command will do nothing.`, 
 	RunE: func(cmd *cobra.Command, args []string) error {
-		configPath, err := config.GetConfigPath()
+		appCtx := cmd.Context().Value(appcontext.CtxKey).(appcontext.Context)
+		configPath, err := config.GetConfigPath(appCtx.ConfigPath)
 		if err != nil {
 			return fmt.Errorf("failed to get config path: %w", err)
 		}
@@ -31,7 +33,7 @@ var configInitCmd = &cobra.Command{
 
 		// File does not exist, so create a new one.
 		cfg := config.NewDefaultConfig()
-		if err := cfg.Save(); err != nil {
+		if err := cfg.Save(configPath); err != nil {
 			return fmt.Errorf("failed to save new configuration file: %w", err)
 		}
 
@@ -39,6 +41,7 @@ var configInitCmd = &cobra.Command{
 		return nil
 	},
 }
+
 
 func init() {
 	configCmd.AddCommand(configInitCmd)

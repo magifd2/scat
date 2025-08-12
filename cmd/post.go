@@ -20,9 +20,13 @@ var postCmd = &cobra.Command{
 	Long:  `Posts a text message. The message content is sourced in the following order of precedence: 1. Command-line argument. 2. --from-file flag. 3. Standard input.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		appCtx := cmd.Context().Value(appcontext.CtxKey).(appcontext.Context)
+		configPath, err := config.GetConfigPath(appCtx.ConfigPath)
+		if err != nil {
+			return fmt.Errorf("failed to get config path: %w", err)
+		}
 
 		// Load config
-		cfg, err := config.Load()
+		cfg, err := config.Load(configPath)
 		if err != nil {
 			if os.IsNotExist(err) {
 				return fmt.Errorf("configuration file not found. Please run 'scat config init' to create a default configuration")

@@ -17,9 +17,13 @@ var uploadCmd = &cobra.Command{
 	Long:  `Uploads a file as a multipart/form-data request. The file content is sourced from the path specified in the --file flag, or from stdin if --file is set to "-".`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		appCtx := cmd.Context().Value(appcontext.CtxKey).(appcontext.Context)
+		configPath, err := config.GetConfigPath(appCtx.ConfigPath)
+		if err != nil {
+			return fmt.Errorf("failed to get config path: %w", err)
+		}
 
 		// Load config
-		cfg, err := config.Load()
+		cfg, err := config.Load(configPath)
 		if err != nil {
 			if os.IsNotExist(err) {
 				return fmt.Errorf("configuration file not found. Please run 'scat config init' to create a default configuration")

@@ -56,12 +56,7 @@ func NewDefaultConfig() *Config {
 }
 
 // Load reads the configuration file from the user's config directory.
-func Load() (*Config, error) {
-	configPath, err := GetConfigPath()
-	if err != nil {
-		return nil, err
-	}
-
+func Load(configPath string) (*Config, error) {
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return nil, err // Return error if file doesn't exist or other read error
@@ -84,12 +79,7 @@ func Load() (*Config, error) {
 }
 
 // Save writes the current configuration to the user's config directory.
-func (c *Config) Save() error {
-	configPath, err := GetConfigPath()
-	if err != nil {
-		return err
-	}
-
+func (c *Config) Save(configPath string) error {
 	if err := os.MkdirAll(filepath.Dir(configPath), 0700); err != nil {
 		return err
 	}
@@ -103,7 +93,10 @@ func (c *Config) Save() error {
 }
 
 // GetConfigPath returns the absolute path to the configuration file.
-func GetConfigPath() (string, error) {
+func GetConfigPath(overridePath string) (string, error) {
+	if overridePath != "" {
+		return overridePath, nil
+	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", err

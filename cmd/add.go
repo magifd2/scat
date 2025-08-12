@@ -5,6 +5,7 @@ import (
 	"os"
 	"syscall"
 
+	"github.com/magifd2/scat/internal/appcontext"
 	"github.com/magifd2/scat/internal/config"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
@@ -16,9 +17,15 @@ var addCmd = &cobra.Command{
 	Long:  `Adds a new profile. You will be prompted to enter the authentication token securely.`, 
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		appCtx := cmd.Context().Value(appcontext.CtxKey).(appcontext.Context)
+		configPath, err := config.GetConfigPath(appCtx.ConfigPath)
+		if err != nil {
+			return fmt.Errorf("failed to get config path: %w", err)
+		}
+
 		profileName := args[0]
 
-		cfg, err := config.Load()
+		cfg, err := config.Load(configPath)
 		if err != nil {
 			if os.IsNotExist(err) {
 				// If the config doesn't exist, we can't add a profile to it.
@@ -61,7 +68,7 @@ var addCmd = &cobra.Command{
 
 		cfg.Profiles[profileName] = newProfile
 
-		if err := cfg.Save(); err != nil {
+		if err := cfg.Save(configPath); err != nil {
 			return fmt.Errorf("Error saving config: %w", err)
 		}
 
@@ -69,6 +76,7 @@ var addCmd = &cobra.Command{
 		return nil
 	},
 }
+
 
 func init() {
 	profileCmd.AddCommand(addCmd)

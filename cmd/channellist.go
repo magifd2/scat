@@ -16,8 +16,12 @@ var channelListCmd = &cobra.Command{
 	Long:  `Iterates through all configured profiles and lists the available channels for each profile whose provider supports this feature.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		appCtx := cmd.Context().Value(appcontext.CtxKey).(appcontext.Context)
+		configPath, err := config.GetConfigPath(appCtx.ConfigPath)
+		if err != nil {
+			return fmt.Errorf("failed to get config path: %w", err)
+		}
 
-		cfg, err := config.Load()
+		cfg, err := config.Load(configPath)
 		if err != nil {
 			if os.IsNotExist(err) {
 				return fmt.Errorf("configuration file not found. Please run 'scat config init' to create a default configuration")
