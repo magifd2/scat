@@ -4,16 +4,23 @@ This document outlines the development status and future roadmap for `scat`.
 
 ---
 
-## Project Status (as of v0.1.9)
-
-The project has undergone significant refactoring and stabilization. The core functionality is robust, and the internal architecture has been improved for better maintainability and extensibility.
-
--   **Provider Logic**: The provider registration mechanism is now explicit and centralized. The Slack provider's internal logic has been made more efficient by caching channel lists and has been split into smaller, more focused files.
--   **Configuration**: Configuration handling is now more explicit. A `scat config init` command has been introduced to prevent unexpected behavior, and commands now provide clear instructions if a config file is not found.
--   **Error Handling**: Global flags (`--debug`, `--silent`, etc.) are handled centrally, and duplicate error messages have been eliminated.
--   **Documentation**: The `README` files have been significantly expanded with detailed setup instructions, usage examples, and a full command reference. `BUILD.md` and `CONTRIBUTING.md` have also been added.
-
 ## Completed Milestones
+
+### v1.2.0 (In Progress)
+
+-   **Log Export Feature**: Implemented the `scat export log` command.
+    -   Supports JSON and plain text output formats.
+    -   Allows exporting to stdout (for piping) or a specified file via the `--output` flag.
+    -   Supports downloading of attached files via the `--output-files` flag.
+    -   Provides time range filtering with `--start-time` and `--end-time`.
+    -   Resolves user mentions (`<@USERID>`) into human-readable names (`@username`).
+    -   Outputs both human-readable (RFC3339) and Unix timestamps for consistency and compatibility.
+-   **Major Refactoring**: Significantly improved the internal architecture for better maintainability.
+    -   **Provider Interface**: Introduced the `LogExporter` sub-interface and the "Options Struct" pattern for new, complex methods (`GetConversationHistory`).
+    -   **Slack Provider**: Decomposed the monolithic `slack.go` file by separating concerns (posting, uploading, exporting, channel logic) into individual files.
+    -   **Security**: Hardened file and directory permissions for all created outputs to `0600` (files) and `0700` (directories).
+
+### Pre-v1.2.0
 
 -   **v0.1.9**: Added comprehensive documentation (`BUILD.md`, `CONTRIBUTING.md`) and significantly updated `README.md` and `README.ja.md` with a command reference and clearer examples.
 -   **v0.1.8**: Refactored the Slack provider (`internal/provider/slack`) by splitting the monolithic `slack.go` file into smaller, more manageable files (`api.go`, `channel.go`, `types.go`).
@@ -32,8 +39,7 @@ The project has undergone significant refactoring and stabilization. The core fu
 
 ### 2. Provider Enhancements (Priority: Medium)
 
--   **`PostFile` Error Handling**: The `PostFile` method for the Slack provider currently does not handle `not_in_channel` errors with an automatic join and retry, unlike `PostMessage`. This should be implemented for consistent behavior.
--   **Parameter Structs**: Refactor the `provider.Interface` methods (e.g., `PostMessage`) to accept a parameter struct (e.g., `PostMessage(params PostMessageParams)`). This would create a cleaner, more extensible interface, as provider-specific options would no longer need to be passed as individual arguments through the command layer.
+-   **Interface Refactoring**: Refactor existing `provider.Interface` methods (e.g., `PostMessage`, `PostFile`) to accept a parameter struct (e.g., `PostMessage(params PostMessageParams)`). This pattern was successfully adopted for the new log export feature and should be applied to older methods for consistency and extensibility.
 
 ### 3. New Providers (Priority: Low)
 
