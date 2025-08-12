@@ -16,7 +16,7 @@ This document outlines the development status and future roadmap for `scat`.
     -   Resolves user mentions (`<@USERID>`) into human-readable names (`@username`).
     -   Outputs both human-readable (RFC3339) and Unix timestamps for consistency and compatibility.
 -   **Major Refactoring**: Significantly improved the internal architecture for better maintainability.
-    -   **Provider Interface**: Introduced the `LogExporter` sub-interface and the "Options Struct" pattern for new, complex methods (`GetConversationHistory`).
+    -   **Provider Interface**: Adopted the "Options Struct" pattern for all provider methods (`PostMessage`, `PostFile`, `ExportLog`) to improve consistency and extensibility.
     -   **Slack Provider**: Decomposed the monolithic `slack.go` file by separating concerns (posting, uploading, exporting, channel logic) into individual files.
     -   **Security**: Hardened file and directory permissions for all created outputs to `0600` (files) and `0700` (directories).
 
@@ -37,17 +37,13 @@ This document outlines the development status and future roadmap for `scat`.
 -   **Current Issue**: The project currently lacks a comprehensive suite of automated tests, making it difficult to verify changes and prevent regressions.
 -   **Proposed Solution**: Implement a robust testing framework. For the Slack provider, this would involve using the `httptest` package to create a mock Slack API server. This would allow for testing API interactions, error handling (`not_in_channel`, etc.), and payload construction without making real API calls.
 
-### 2. Provider Enhancements (Priority: Medium)
-
--   **Interface Refactoring**: Refactor existing `provider.Interface` methods (e.g., `PostMessage`, `PostFile`) to accept a parameter struct (e.g., `PostMessage(params PostMessageParams)`). This pattern was successfully adopted for the new log export feature and should be applied to older methods for consistency and extensibility.
-
-### 3. New Providers (Priority: Low)
+### 2. New Providers (Priority: Low)
 
 -   With the improved provider registration system, adding new providers is now much easier. Potential candidates include:
     -   Discord
     -   Microsoft Teams
 
-### 4. Advanced Features (Priority: Low)
+### 3. Advanced Features (Priority: Low)
 
 -   **Slack Block Kit Support**: Add support for Slack's "Block Kit" to enable posting richer messages containing images, buttons, and other UI elements. This could be implemented via a new flag, such as `scat post --block-kit '{"blocks": ...}'` or `scat post --block-kit @my-blocks.json`.
 -   **Persistent Caching**: Implement a file-based caching mechanism for data like channel lists. This would persist the cache between `scat` command invocations, further reducing API calls for users who run the command frequently.

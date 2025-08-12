@@ -42,4 +42,10 @@ For instructions on how to build the project, run tests, and other development t
 -   `main.go`: The main entry point of the application.
 -   `cmd/`: Contains all the command-line interface logic, using the `cobra` library. Each command and subcommand has its own file.
 -   `internal/config/`: Handles loading and saving the configuration file.
--   `internal/provider/`: Defines the `provider.Interface` and contains the specific implementations for different services (like `slack` and `mock`). This is the primary area to look at if you want to add support for a new service.
+-   `internal/provider/`: Defines the `provider.Interface` and contains the specific implementations for different services.
+    -   `provider.go`: Defines the core `Interface` that all providers must implement.
+    -   `types.go`: Defines shared data structures used in the provider interfaces (e.g., `PostMessageOptions`).
+    -   `mock/`: A mock provider implementation, useful for testing.
+    -   `slack/`: The Slack provider implementation, with its logic split into multiple files based on responsibility (`post.go`, `upload.go`, `exporter.go`, etc.).
+-   `internal/export/`: Contains the data structures for the exported log format (`ExportedLog`, etc.).
+-   `internal/util/`: Contains generic helper functions (e.g., `ToRFC3339`).

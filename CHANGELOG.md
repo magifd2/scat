@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Refactoring
+
+- **Provider Interface**: Adopted the "Options Struct" pattern for `PostMessage` and `PostFile` methods to improve consistency and extensibility across the provider interface.
+
 ## [1.2.0] - 2025-08-12
 
 ### Features
@@ -22,12 +28,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **CLI Robustness**: Removed ambiguous short-form flags (e.g., `-o`) to prevent misinterpretation of command-line arguments.
 - **File Permissions**: Hardened permissions for all created files and directories to `0600` (files) and `0700` (directories) respectively, enhancing security.
-- Fixed numerous bugs during development related to timestamp parsing, empty field handling, and conditional directory creation.
 
 ### Refactoring
 
+- **Provider Architecture**: Encapsulated all export logic within the provider layer, removing the generic `Exporter` engine in favor of a simpler, more robust design where each provider is fully responsible for its own export process.
 - **Slack Provider**: Decomposed the Slack provider's methods into smaller, single-responsibility files (`post.go`, `upload.go`, `exporter.go`, etc.) for improved maintainability.
-- **Provider Interface**: Introduced the `LogExporter` sub-interface and adopted the "Options Struct" pattern for new complex methods to improve extensibility.
 
 ## [1.1.0] - 2025-08-11
 
