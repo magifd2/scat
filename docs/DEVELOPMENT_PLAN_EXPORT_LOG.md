@@ -1,4 +1,4 @@
-## Development Plan: Channel Log Export Feature
+## Development Plan: Channel Log Export Feature (Final)
 
 ### I. Feature Overview
 
@@ -22,119 +22,122 @@ The development will follow the Safe Refactoring Protocol (III-2) by making mini
 
 ### V. Detailed Plan
 
-#### Phase 1: Provider Interface and Slack API Integration
+#### Phase 1: Provider Interface and API Integration
 
 1.  **Update `Capabilities` Struct:**
     *   **File:** `internal/provider/provider.go`
-    *   **Changes:** Add new boolean fields to the `Capabilities` struct:
-        *   `CanExportLogs bool`
-        *   `CanResolveUsers bool`
-        *   `CanDownloadFiles bool`
-    *   **Testing:** Ensure existing tests for `Provider` implementations still pass.
-2.  **Update `Provider` Interface (Add New Methods):**
+    *   **Changes:** To maintain consistency with existing code, add a new boolean field to the `Capabilities` struct.
+        ```go
+        type Capabilities struct {
+            // ... existing fields
+            CanExportLogs bool
+        }
+        ```
+
+2.  **Define New `LogExporter` Interface:**
     *   **File:** `internal/provider/provider.go`
-    *   **Changes:** Add new methods to the `Provider` interface:
-        *   `GetConversationHistory(channelID string, latest, oldest string, limit int, cursor string) (*ConversationsHistoryResponse, error)`
-        *   `GetUserInfo(userID string) (*UserInfoResponse, error)`
-        *   `DownloadFile(fileURL string, token string) ([]byte, error)`
-    *   **Testing:** Ensure existing tests for `Provider` implementations still pass.
-3.  **Implement New Methods and Capabilities in Slack Provider:**
-    *   **File:** `internal/provider/slack/api.go` (for API calls) and `internal/provider/slack/slack.go` (for `Capabilities` method)
-    *   **Functions:** Implement the `GetConversationHistory`, `GetUserInfo`, and `DownloadFile` methods as defined in the `Provider` interface.
-    *   **Capabilities:** Update the `Capabilities()` method in `internal/provider/slack/slack.go` to return `true` for `CanExportLogs`, `CanResolveUsers`, and `CanDownloadFiles`.
-    *   **Details:** Implement the API calls to `conversations.history`, `users.info`, and the file download logic. Handle pagination for `conversations.history`.
-    *   **Testing:** Unit tests for these new API calls and file download.
-4.  **Update Mock Provider:**
+    *   **Changes:** To separate concerns, a new interface dedicated to export functionality will be created.
+        ```go
+        type LogExporter interface {
+            GetConversationHistory(channelID string, latest, oldest string, limit int, cursor string) (*ConversationHistoryResponse, error)
+            GetUserInfo(userID string) (*UserInfoResponse, error)
+            DownloadFile(fileURL string) ([]byte, error)
+        }
+        ```
+    *   The main `provider.Interface` will be updated with a method to retrieve the exporter.
+        ```go
+        type Interface interface {
+            Capabilities() Capabilities
+            // ... existing methods
+            LogExporter() LogExporter // To be called only if CanExportLogs is true
+        }
+        ```
+
+3.  **Define Provider-Level API Data Structures:**
+    *   **File:** `internal/provider/types.go` (New File)
+    *   **Changes:** Create this file to hold common, provider-agnostic API response structures returned by the `LogExporter` interface.
+        *   `ConversationHistoryResponse`
+        *   `UserInfoResponse`
+
+4.  **Implement in Slack Provider:**
+    *   **File:** `internal/provider/slack/slack.go` and `internal/provider/slack/api.go`
+    *   **Changes:**
+        *   Update the `Capabilities()` method to return `CanExportLogs: true`.
+        *   Implement the `LogExporter()` method to return a concrete type that satisfies the `LogExporter` interface.
+        *   Implement `GetConversationHistory`, `GetUserInfo`, and `DownloadFile`.
+
+5.  **Update Mock Provider:**
     *   **File:** `internal/provider/mock/mock.go`
-    *   **Changes:** Implement the new `GetConversationHistory`, `GetUserInfo`, and `DownloadFile` methods. These can be no-op or return dummy data for testing purposes.
-    *   **Capabilities:** Update the `Capabilities()` method to return appropriate boolean values for `CanExportLogs`, `CanResolveUsers`, and `CanDownloadFiles`. For the mock provider, these might return `true` to allow testing the CLI logic, or `false` to test the CLI's handling of unsupported features. We'll start with `true` for testing purposes.
-    *   **Testing:** Ensure existing tests for the mock provider still pass.
+    *   **Changes:**
+        *   Update `Capabilities()` to return `CanExportLogs: true` (for testing).
+        *   Implement `LogExporter()` to return a mock implementation of `LogExporter`.
 
 #### Phase 2: Core Logic and Data Structs
 
-1.  **Define Structured Data Models:**
-    *   **File:** `internal/provider/slack/types.go` (for Slack API response structs) and `internal/export/types.go` (new file for generic export data structs)
-    *   **Structs:**
-        *   `ExportedLog`: Top-level struct containing `ChannelInfo`, `ExportTimestamp`, `Messages`.
-        *   `ExportedMessage`: Represents a single message, including `ID`, `UserID`, `UserName`, `Text`, `Timestamp`, `Type`, `Files` (array of `ExportedFile`).
-        *   `ExportedFile`: Represents an attached file, including `ID`, `Name`, `MimeType`, `LocalPath` (if downloaded).
-    *   **Details:** Design the Go structs to hold the parsed and transformed data.
-2.  **Implement User Resolver with Caching:**
-    *   **File:** `internal/export/userresolver.go` (new file)
-    *   **Function:** `ResolveUserName(userID string, provider provider.Interface) (string, error)`
-    *   **Details:** Implement a caching mechanism for user IDs to avoid redundant API calls. This will use the `provider.GetUserInfo` method.
-    *   **Testing:** Unit tests for the user resolver and caching.
-3.  **Implement File Handler:**
-    *   **File:** `internal/export/filehandler.go` (new file)
-    *   **Function:** `HandleAttachedFiles(files []SlackFile, exportDir string, provider provider.Interface) ([]ExportedFile, error)`
-    *   **Details:** Iterate through attached files, download them to `exportDir` using `provider.DownloadFile`, and update `ExportedFile` with `LocalPath`.
+1.  **Define Generic Export Data Models:**
+    *   **File:** `internal/export/types.go` (New File)
+    *   **Structs:** Define generic structs for the final output format, such as `ExportedLog`, `ExportedMessage`, `ExportedFile`.
+
+2.  **Implement Core `Exporter` Logic:**
+    *   **File:** `internal/export/exporter.go` (New File)
+    *   **Changes:** Create a central `Exporter` struct that orchestrates the entire export process. It will take a `provider.LogExporter` in its constructor.
+    *   This `Exporter` will contain logic for pagination, user name resolution (with caching), file downloads, and data transformation.
 
 #### Phase 3: Command-Line Interface (CLI) Integration
 
-1.  **Create New Cobra Commands:**
-    *   **File:** `cmd/export.go` (new file for the parent `export` command)
-    *   **File:** `cmd/export_log.go` (new file for the `log` subcommand)
-    *   **Command Structure:** `scat export log <channel-name>`
-    *   **Flags (for `log` subcommand):**
+1.  **Timestamp Handling Specification:**
+    *   **No Timezone Provided:** If the user does not specify a timezone offset for `--start-time` or `--end-time` (e.g., `2025-08-12T10:00:00`), it will be interpreted as the local time of the system where the command is run.
+    *   **Timezone Provided:** If an offset (`+09:00`) or Zulu (`Z`) is specified, it will be interpreted as that exact time.
+
+2.  **Create New Cobra Commands:**
+    *   **File:** `cmd/export.go` (parent command) and `cmd/export_log.go` (subcommand).
+    *   **Command Structure:** `scat export log`
+    *   **Flags:**
         *   `--channel <name>` (required): Channel to export from.
         *   `--output-format <format>` (optional, default `json`): `json` or `text`.
-        *   `--start-time <timestamp>` (optional): Start of time range.
-        *   `--end-time <timestamp>` (optional): End of time range.
+        *   `--start-time <timestamp>` (optional): Start of time range. Format: RFC3339.
+        *   `--end-time <timestamp>` (optional): End of time range. Format: RFC3339.
         *   `--include-files` (optional, boolean): Whether to download attached files.
-        *   `--output-dir <path>` (optional): Directory to save exported files and JSON output.
-    *   **Details:** Integrate `exportCmd` with `rootCmd`, and `exportLogCmd` with `exportCmd`.
-2.  **Implement Command Logic:**
-    *   Parse flags.
-    *   Get the current provider instance.
-    *   **Check provider capabilities using `provider.Capabilities()`:**
-        *   If `provider.Capabilities().CanExportLogs` is `false`, print an error and exit.
-        *   If `--include-files` is set and `provider.Capabilities().CanDownloadFiles` is `false`, print an error and exit.
-        *   If user resolution is required and `provider.Capabilities().CanResolveUsers` is `false`, handle appropriately (e.g., output user IDs instead of names, or print a warning).
-    *   Resolve channel name to ID.
-    *   Call `Provider.GetConversationHistory`.
-    *   Iterate through messages, resolve user names using the `UserResolver`, and handle file downloads using the `FileHandler`.
-    *   **Apply data validation and sanitization.**
-    *   Format and output the data based on `--output-format`.
+        *   `--output-dir <path>` (optional): Directory to save exported files. **Defaults to `./scat-export-<UTC-timestamp>/`**.
+
+3.  **Implement Command Logic:**
+    *   Parse flags and interpret timestamps according to the specification.
+    *   Unless in `--silent` mode, print a **single-line** status message indicating the interpreted export period.
+        *   **Example Message:** `> Exporting messages from 2025-08-13T10:00:00+09:00 to 2025-08-14T10:00:00+09:00 (UTC: 2025-08-13T01:00:00Z to 2025-08-14T01:00:00Z)`
+    *   Check `provider.Capabilities().CanExportLogs` and exit with an error if not supported.
+    *   Call `provider.LogExporter()` to get the exporter and instantiate the `internal/export.Exporter`.
+    *   Call the main method on the `Exporter` and stream the results to the output file.
 
 #### Phase 4: Documentation and Verification
 
 1.  **Update `README.md` and `README.ja.md`:**
-    *   Add a new section for the `export` command and its `log` subcommand, their usage, and flags.
-2.  **Run `make lint` and `make test`:**
+    *   Add a new section for the `export log` command, its usage, and flags.
+2.  **Update `SLACK_SETUP.md`:**
+    *   Add the required Slack API scopes for exporting: `conversations:history`, `users:read`, and `files:read`.
+3.  **Run `make lint` and `make test`:**
     *   Ensure all new code adheres to linting rules and all tests pass.
-3.  **Manual Testing:**
+4.  **Manual Testing:**
     *   Perform end-to-end testing of the `scat export log` command with various options.
 
 ### VI. Estimated Effort
 
-*   **Phase 1 (Provider Interface & Slack API Integration):** 6-10 hours
-*   **Phase 2 (Core Logic & Data Structs):** 8-16 hours
+*   **Phase 1 (Provider Interface & API Integration):** 6-10 hours
+*   **Phase 2 (Core Logic & Data Structs):** 8-14 hours
 *   **Phase 3 (CLI Integration):** 4-8 hours
 *   **Phase 4 (Documentation & Verification):** 2-4 hours
 
-**Total Estimated Effort:** 20-38 hours (approx. 2.5-5 days of focused work).
+**Total Estimated Effort:** 20-36 hours.
 
-### VII. Data Validation and Sanitization (New Section)
+### VII. Data Validation and Sanitization
 
-To ensure security and data integrity, the following validation and sanitization measures will be implemented:
+*   **Path Traversal Prevention:** All user-provided paths (`--output-dir`) will be cleaned and resolved to absolute paths using `filepath.Clean` and `filepath.Join`. Downloaded filenames will be sanitized.
+*   **Structured Data Sanitization:** All string content embedded in the final JSON output will be validated as proper UTF-8. URLs will be validated for correct formatting.
 
-*   **Path Traversal Prevention:**
-    *   When creating local files (e.g., for downloaded attachments or the JSON output file), all user-provided paths (e.g., `--output-dir`) will be sanitized and resolved to absolute paths.
-    *   The `filepath.Clean` and `filepath.Join` functions from Go's standard library will be used to prevent malicious path manipulation (e.g., `../../`).
-    *   Downloaded filenames will be sanitized to remove any characters that could lead to path traversal or invalid filenames on various operating systems.
-*   **Structured Data Sanitization (for JSON output):**
-    *   While JSON encoding generally handles special characters, it's crucial to ensure that the *content* being embedded into the JSON (e.g., message text, filenames, URLs from Slack) does not contain control characters or sequences that could be misinterpreted by downstream parsers or lead to display issues.
-    *   Specifically, for message text and other string fields, we will ensure they are valid UTF-8.
-    *   URLs will be validated to ensure they are well-formed before being included in the structured output.
-    *   Any sensitive information (e.g., API tokens) will be explicitly excluded from the output.
+### VIII. Open Questions / Considerations (Final)
 
-### VIII. Open Questions / Considerations (Expanded)
-
-*   **Rate Limiting:** Slack API has rate limits. The implementation should consider strategies to handle them (e.g., exponential backoff).
-*   **Error Handling:** Robust error handling for API calls, file operations, and data parsing. Specific error types will be defined where appropriate to allow for more granular error handling and user feedback.
-*   **Large Exports:** How to handle very large exports (e.g., thousands of messages, many files) efficiently without excessive memory usage.
-    *   For JSON output, consider streaming the output to a file instead of holding the entire structure in memory for very large exports.
-    *   For file downloads, process them one by one to manage memory and avoid overwhelming the system.
-*   **User Permissions:** Clearly document the required Slack bot permissions (`conversations:history`, `users:read`, `files:read`).
-*   **Time Zone Handling:** When dealing with `start-time` and `end-time` flags, clarify how time zones will be handled (e.g., UTC, local time, or requiring a specific format with timezone information).
-*   **Output File Naming:** Define a clear and consistent naming convention for the exported JSON file and downloaded attachments.
+*   **Rate Limiting:** The Slack API has rate limits. **The implementation must include an exponential backoff retry mechanism in the base API client** to handle `429 Too Many Requests` errors gracefully.
+*   **Error Handling:** Robust error handling for API calls, file operations, and data parsing.
+*   **Large Exports:** To handle large exports efficiently without excessive memory usage, **the JSON output will be streamed directly to a file using `json.Encoder`** instead of being held in memory. File downloads will be processed sequentially.
+*   **User Permissions:** The required Slack bot permissions (`conversations:history`, `users:read`, `files:read`) will be clearly documented in `SLACK_SETUP.md`.
+*   **Time Zone Handling:** The timestamp interpretation logic is defined in Phase 3.
+*   **Output File Naming:** A clear and consistent naming convention will be used (e.g., `export-<channel>-<timestamp>.json`).
