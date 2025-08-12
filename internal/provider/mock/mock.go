@@ -26,7 +26,13 @@ func (p *Provider) Capabilities() provider.Capabilities {
 		CanListChannels: false,
 		CanPostFile:     true, // Mock can "handle" file posts
 		CanUseIconEmoji: false,
+		CanExportLogs:   true, // Mock supports exporting for testing purposes
 	}
+}
+
+// LogExporter returns the log exporter implementation for the mock provider.
+func (p *Provider) LogExporter() provider.LogExporter {
+	return p
 }
 
 // PostMessage prints a mock message.
@@ -62,4 +68,42 @@ func (p *Provider) ListChannels() ([]string, error) {
 		fmt.Fprintln(os.Stderr, "[DEBUG] Mock ListChannels called")
 	}
 	return nil, fmt.Errorf("ListChannels is not supported by the mock provider")
+}
+
+// --- LogExporter Methods ---
+
+func (p *Provider) GetConversationHistory(channelID string, latest, oldest string, limit int, cursor string) (*provider.ConversationHistoryResponse, error) {
+	if !p.Context.Silent {
+		fmt.Fprintln(os.Stderr, "--- [MOCK] GetConversationHistory called ---")
+	}
+	// Return a dummy response for testing
+	resp := &provider.ConversationHistoryResponse{
+		Messages: []provider.Message{
+			{Type: "message", Timestamp: "1672531200.000000", UserID: "U012AB3CDE", Text: "Hello from mock"},
+		},
+		HasMore:    false,
+		NextCursor: "",
+	}
+	return resp, nil
+}
+
+func (p *Provider) GetUserInfo(userID string) (*provider.UserInfoResponse, error) {
+	if !p.Context.Silent {
+		fmt.Fprintln(os.Stderr, "--- [MOCK] GetUserInfo called ---")
+	}
+	resp := &provider.UserInfoResponse{
+		User: provider.User{
+			ID:       userID,
+			Name:     fmt.Sprintf("mockuser_%s", userID),
+			RealName: fmt.Sprintf("Mock User %s", userID),
+		},
+	}
+	return resp, nil
+}
+
+func (p *Provider) DownloadFile(fileURL string) ([]byte, error) {
+	if !p.Context.Silent {
+		fmt.Fprintln(os.Stderr, "--- [MOCK] DownloadFile called ---")
+	}
+	return []byte("mock file content for " + fileURL), nil
 }

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/magifd2/scat/internal/appcontext"
@@ -42,7 +43,13 @@ func (p *Provider) Capabilities() provider.Capabilities {
 		CanListChannels: true,
 		CanPostFile:     true,
 		CanUseIconEmoji: true,
+		CanExportLogs:   true,
 	}
+}
+
+// LogExporter returns the log exporter implementation for Slack.
+func (p *Provider) LogExporter() provider.LogExporter {
+	return p // The Provider itself implements the LogExporter interface
 }
 
 // --- Provider Methods ---
@@ -207,4 +214,65 @@ func (p *Provider) ListChannels() ([]string, error) {
 		channelNames = append(channelNames, "#"+name)
 	}
 	return channelNames, nil
+}
+
+// --- LogExporter Methods ---
+
+func (p *Provider) GetConversationHistory(channelID string, latest, oldest string, limit int, cursor string) (*provider.ConversationHistoryResponse, error) {
+	params := url.Values{}
+	params.Add("channel", channelID)
+	if latest != "" {
+		params.Add("latest", latest)
+	}
+	if oldest != "" {
+		params.Add("oldest", oldest)
+	}
+	if limit > 0 {
+		params.Add("limit", strconv.Itoa(limit))
+	}
+	if cursor != "" {
+		params.Add("cursor", cursor)
+	}
+
+	respBody, err := p.sendRequest("GET", conversationsHistoryURL+"?"+params.Encode(), nil, "")
+	if err != nil {
+		return nil, fmt.Errorf("failed to call conversations.history: %w", err)
+	}
+
+	var slackResp conversationsHistoryResponse
+	if err := json.Unmarshal(respBody, &slackResp); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal conversations.history response: %w", err)
+	}
+
+	// Convert Slack-specific response to the provider-agnostic type
+	providerResp := &provider.ConversationHistoryResponse{
+		HasMore:          slackResp.HasMore,
+		NextCursor:       slackResp.ResponseMetadata.NextCursor,
+		ResponseMetadata: slackResp.ResponseMetadata,
+		Messages:         slackResp.Messages,
+	}
+
+	return providerResp, nil
+}
+
+func (p *Provider) GetUserInfo(userID string) (*provider.UserInfoResponse, error) {
+	params := url.Values{}
+	params.Add("user", userID)
+
+	respBody, err := p.sendRequest("GET", usersInfoURL+"?"+params.Encode(), nil, "")
+	if err != nil {
+		return nil, fmt.Errorf("failed to call users.info: %w", err)
+	}
+
+	var slackResp userInfoResponse
+	if err := json.Unmarshal(respBody, &slackResp); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal users.info response: %w", err)
+	}
+
+	return &provider.UserInfoResponse{User: slackResp.User}, nil
+}
+
+func (p *Provider) DownloadFile(fileURL string) ([]byte, error) {
+	// Note: This uses sendRequest which automatically adds the auth header.
+	return p.sendRequest("GET", fileURL, nil, "")
 }

@@ -113,7 +113,7 @@ The development will follow the Safe Refactoring Protocol (III-2) by making mini
 1.  **Update `README.md` and `README.ja.md`:**
     *   Add a new section for the `export log` command, its usage, and flags.
 2.  **Update `SLACK_SETUP.md`:**
-    *   Add the required Slack API scopes for exporting: `conversations:history`, `users:read`, and `files:read`.
+    *   Add the required Slack API scopes for exporting: `channels:history`, `groups:history`, `users:read`, and `files:read`.
 3.  **Run `make lint` and `make test`:**
     *   Ensure all new code adheres to linting rules and all tests pass.
 4.  **Manual Testing:**
@@ -138,6 +138,6 @@ The development will follow the Safe Refactoring Protocol (III-2) by making mini
 *   **Rate Limiting:** The Slack API has rate limits. **The implementation must include an exponential backoff retry mechanism in the base API client** to handle `429 Too Many Requests` errors gracefully.
 *   **Error Handling:** Robust error handling for API calls, file operations, and data parsing.
 *   **Large Exports:** To handle large exports efficiently without excessive memory usage, **the JSON output will be streamed directly to a file using `json.Encoder`** instead of being held in memory. File downloads will be processed sequentially.
-*   **User Permissions:** The required Slack bot permissions (`conversations:history`, `users:read`, `files:read`) will be clearly documented in `SLACK_SETUP.md`.
+*   **User Permissions:** The required Slack bot permissions (`channels:history`, `groups:history`, `users:read`, `files:read`) will be clearly documented in `SLACK_SETUP.md`.
 *   **Time Zone Handling:** The timestamp interpretation logic is defined in Phase 3.
 *   **Output File Naming:** A clear and consistent naming convention will be used (e.g., `export-<channel>-<timestamp>.json`).

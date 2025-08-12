@@ -5,6 +5,15 @@ type Capabilities struct {
 	CanListChannels bool // Whether the provider can list channels.
 	CanPostFile     bool // Whether the provider can post files.
 	CanUseIconEmoji bool // Whether the provider supports custom icon emojis.
+	CanExportLogs   bool // Whether the provider can export channel logs.
+}
+
+// LogExporter defines the interface for exporting channel logs.
+// This is separated from the main Interface to avoid bloating it with a large, optional feature set.
+type LogExporter interface {
+	GetConversationHistory(channelID string, latest, oldest string, limit int, cursor string) (*ConversationHistoryResponse, error)
+	GetUserInfo(userID string) (*UserInfoResponse, error)
+	DownloadFile(fileURL string) ([]byte, error)
 }
 
 // Interface defines the methods that a provider must implement.
@@ -20,4 +29,8 @@ type Interface interface {
 
 	// ListChannels lists available channels for the provider.
 	ListChannels() ([]string, error)
+
+	// LogExporter returns the log exporter implementation.
+	// This should only be called if Capabilities().CanExportLogs is true.
+	LogExporter() LogExporter
 }

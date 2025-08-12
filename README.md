@@ -9,6 +9,7 @@
 - **Post text messages**: Send content from arguments, files, or stdin.
 - **Upload files**: Upload files from a path or stdin.
 - **Stream content**: Continuously stream from stdin, posting messages periodically.
+- **Export channel logs**: Export message history from a channel to a structured JSON file.
 - **Profile management**: Configure multiple destinations and switch between them easily.
 - **Extensible providers**: Currently supports Slack and a mock provider for testing.
 
@@ -81,6 +82,14 @@ Here are some common ways to use `scat`.
 -   **Upload from standard input**:
     `cat data.csv | scat upload --file - --filename data.csv`
 
+### Exporting Channel Logs (`export log`)
+
+-   **Export a channel's history to a JSON file**:
+    `scat export log --channel "#random"`
+
+-   **Export with a specific time range and include attached files**:
+    `scat export log -c "#random" --start-time "2023-01-01T00:00:00Z" --include-files`
+
 ## Command Reference
 
 ### Global Flags
@@ -98,6 +107,7 @@ Here are some common ways to use `scat`.
 | --------------- | ------------------------------------------------ |
 | `scat post`     | Posts a text message.                            |
 | `scat upload`   | Uploads a file.                                  |
+| `scat export`   | Exports data, such as channel logs.              |
 | `scat profile`  | Manages configuration profiles.                  |
 | `scat config`   | Manages the configuration file itself.           |
 | `scat channel`  | Lists channels for supported providers.          |
@@ -122,6 +132,17 @@ Here are some common ways to use `scat`.
 | `--filename`| `-n`      | Filename for the upload.                         |
 | `--filetype`|           | Filetype for syntax highlighting (e.g., `go`).   |
 | `--comment` | `-m`      | A comment to post with the file.                 |
+
+### `export log` Command Flags
+
+| Flag            | Shorthand | Description                                      |
+| --------------- | --------- | ------------------------------------------------ |
+| `--channel`     | `-c`      | **Required.** Channel to export from.            |
+| `--start-time`  |           | Start of time range (RFC3339 format).            |
+| `--end-time`    |           | End of time range (RFC3339 format).              |
+| `--include-files` |         | Download attached files into the output directory. |
+| `--output-dir`  |           | Directory to save exported files.                |
+| `--output-format` |         | Output format (`json` or `text`).                |
 
 ### `profile` Subcommands
 

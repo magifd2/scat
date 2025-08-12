@@ -24,12 +24,21 @@ Once you are on the app's management screen, you need to add the permissions tha
 
 3.  Under **"Bot Token Scopes"**, click the **"Add an OAuth Scope"** button and add each of the following scopes:
 
+    **Core Scopes (for posting):**
     *   `chat:write`: Required to post messages to public channels.
     *   `files:write`: Required to upload files.
-    *   `channels:read`: Required to list public channels (for the `channel list` command).
-    *   `groups:read`: Required to list private channels (for the `channel list` command).
     *   `channels:join`: Required for the bot to automatically join public channels before posting.
-    *   `chat:write.customize`: **Optional**. Required if you want to override the bot's name or icon using the `--username` or `--iconemoji` flags.
+
+    **Optional Scopes (for extra features):**
+    *   `channels:read`: Required for the `channel list` command.
+    *   `groups:read`: Required for the `channel list` command to see private channels.
+    *   `chat:write.customize`: Required if you want to override the bot's name or icon using the `--username` or `--iconemoji` flags.
+
+    **Export Scopes (for `export log` command):**
+    *   `channels:history`: Required to read message history from public channels.
+    *   `groups:history`: Required to read message history from private channels.
+    *   `users:read`: Required to resolve user IDs to user names.
+    *   `files:read`: Required to download attached files.
 
 ### Step 3: Install the App to Your Workspace
 

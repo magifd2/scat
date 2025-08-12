@@ -10,11 +10,13 @@ import (
 )
 
 const (
-	postMessageURL         = "https://slack.com/api/chat.postMessage"
-	getUploadURLExternalURL  = "https://slack.com/api/files.getUploadURLExternal"
-	completeUploadExternalURL = "https://slack.com/api/files.completeUploadExternal"
-	conversationsListURL   = "https://slack.com/api/conversations.list"
-	conversationsJoinURL   = "https://slack.com/api/conversations.join"
+	postMessageURL            = "https://slack.com/api/chat.postMessage"
+	getUploadURLExternalURL     = "https://slack.com/api/files.getUploadURLExternal"
+	completeUploadExternalURL    = "https://slack.com/api/files.completeUploadExternal"
+	conversationsListURL      = "https://slack.com/api/conversations.list"
+	conversationsJoinURL      = "https://slack.com/api/conversations.join"
+	conversationsHistoryURL   = "https://slack.com/api/conversations.history"
+	usersInfoURL              = "https://slack.com/api/users.info"
 )
 
 func (p *Provider) populateChannelCache() error {
