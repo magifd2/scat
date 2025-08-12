@@ -27,7 +27,8 @@ Features:
 		debug, _ := cmd.Flags().GetBool("debug")
 		noOp, _ := cmd.Flags().GetBool("noop")
 		silent, _ := cmd.Flags().GetBool("silent")
-		appCtx := appcontext.NewContext(debug, noOp, silent)
+		configPath, _ := cmd.Flags().GetString("config")
+		appCtx := appcontext.NewContext(debug, noOp, silent, configPath)
 		cmd.SetContext(context.WithValue(cmd.Context(), appcontext.CtxKey, appCtx))
 		return nil
 	},
@@ -41,4 +42,5 @@ func init() {
 	rootCmd.PersistentFlags().Bool("debug", false, "Enable debug logging")
 	rootCmd.PersistentFlags().Bool("noop", false, "Dry run, do not actually post or upload")
 	rootCmd.PersistentFlags().Bool("silent", false, "Suppress informational messages")
+	rootCmd.PersistentFlags().String("config", "", "Path to an alternative config file")
 }
