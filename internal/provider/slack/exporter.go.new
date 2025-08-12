@@ -46,13 +46,13 @@ func (p *Provider) GetConversationHistory(opts provider.GetConversationHistoryOp
 	// If the bot is not in the channel, join and retry.
 	if err != nil && strings.Contains(err.Error(), "not_in_channel") {
 		if !p.Context.Silent {
-			fmt.Fprintf(os.Stderr, "Bot not in channel '%s'. Attempting to join...\n", opts.ChannelName)
+			fmt.Fprintf(os.Stderr, "Bot not in channel \'%s\'. Attempting to join...\n", opts.ChannelName)
 		}
 		if joinErr := p.joinChannel(channelID); joinErr != nil {
-			return nil, fmt.Errorf("failed to auto-join channel '%s': %w", opts.ChannelName, joinErr)
+			return nil, fmt.Errorf("failed to auto-join channel \'%s\': %w", opts.ChannelName, joinErr)
 		}
 		if !p.Context.Silent {
-			fmt.Fprintf(os.Stderr, "Successfully joined channel '%s'. Retrying...\n", opts.ChannelName)
+			fmt.Fprintf(os.Stderr, "Successfully joined channel \'%s\'. Retrying...\n", opts.ChannelName)
 		}
 		// Retry the request
 		respBody, err = p.sendRequest("GET", conversationsHistoryURL+"?"+params.Encode(), nil, "")
