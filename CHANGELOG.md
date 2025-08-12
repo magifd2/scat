@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2025-08-12
+
+### Features
+
+- **Channel Log Export**: Added a new `scat export log` command.
+    - Supports JSON and plain text output formats (`--output-format`).
+    - Allows exporting the main log to standard output or a file (`--output`).
+    - Supports downloading attached files to a specified or auto-generated directory (`--output-files`).
+    - Provides time range filtering (`--start-time`, `--end-time`).
+    - Automatically resolves user mentions (e.g., `<@U...>` to `@username`).
+    - Standardizes timestamps in the output JSON to include both human-readable RFC3339 and original Unix timestamp formats for compatibility and precision.
+- **Slack Provider**: Implemented an auto-join feature for the `export log` command, mirroring the behavior of `post`.
+
+### Fixes
+
+- **CLI Robustness**: Removed ambiguous short-form flags (e.g., `-o`) to prevent misinterpretation of command-line arguments.
+- **File Permissions**: Hardened permissions for all created files and directories to `0600` (files) and `0700` (directories) respectively, enhancing security.
+- Fixed numerous bugs during development related to timestamp parsing, empty field handling, and conditional directory creation.
+
+### Refactoring
+
+- **Slack Provider**: Decomposed the Slack provider's methods into smaller, single-responsibility files (`post.go`, `upload.go`, `exporter.go`, etc.) for improved maintainability.
+- **Provider Interface**: Introduced the `LogExporter` sub-interface and adopted the "Options Struct" pattern for new complex methods to improve extensibility.
+
 ## [1.1.0] - 2025-08-11
 
 ### Features
