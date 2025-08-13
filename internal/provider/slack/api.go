@@ -144,8 +144,8 @@ func (p *Provider) sendRequest(method, url string, body io.Reader, contentType s
 	}
 	req.Header.Set("Authorization", "Bearer "+p.Profile.Token)
 
-	httpClient := &http.Client{}
-	resp, err := httpClient.Do(req)
+	// Use the httpClient from the Provider struct
+	resp, err := p.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}

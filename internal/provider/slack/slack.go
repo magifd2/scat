@@ -2,6 +2,7 @@ package slack
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 
 	"github.com/magifd2/scat/internal/appcontext"
@@ -13,7 +14,8 @@ import (
 type Provider struct {
 	Profile        config.Profile
 	Context        appcontext.Context
-	channelIDCache map[string]string // Cache for channel name to ID mapping
+	httpClient     *http.Client
+	channelIDCache map[string]string
 }
 
 // NewProvider creates a new Slack Provider.
@@ -21,11 +23,11 @@ func NewProvider(p config.Profile, ctx appcontext.Context) (provider.Interface, 
 	prov := &Provider{
 		Profile:        p,
 		Context:        ctx,
+		httpClient:     &http.Client{},
 		channelIDCache: make(map[string]string),
 	}
+
 	// Best-effort attempt to populate the channel cache on initialization.
-	// If it fails (e.g., due to missing permissions), we don't treat it as a fatal error.
-	// The cache will be populated on-demand later if needed.
 	if err := prov.populateChannelCache(); err != nil {
 		if ctx.Debug {
 			fmt.Fprintf(os.Stderr, "[DEBUG] Failed to populate channel cache on init: %v\n", err)
@@ -43,4 +45,3 @@ func (p *Provider) Capabilities() provider.Capabilities {
 		CanExportLogs:   true,
 	}
 }
-
