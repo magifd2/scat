@@ -4,12 +4,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var configCmd = &cobra.Command{
-	Use:   "config",
-	Short: "Manage configuration",
-	Long:  `Provides commands to manage the application configuration, such as initializing a new config file.`,
-}
+// newConfigCmd creates the command for configuration management.
+func newConfigCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "config",
+		Short: "Manage configuration",
+		Long:  `Provides commands to manage the application configuration, such as initializing a new config file.`,
+	}
 
-func init() {
-	rootCmd.AddCommand(configCmd)
+	// Add subcommands
+	cmd.AddCommand(newConfigInitCmd()) // Assuming newConfigInitCmd() will be created
+
+	return cmd
 }
