@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"syscall"
+	"time"
 
 	"golang.org/x/term"
 )
@@ -23,3 +24,7 @@ func GetPasswordFromPrompt(prompt string) (string, error) {
 	fmt.Fprintln(os.Stderr) // Print a newline after password input
 	return string(tokenBytes), nil
 }
+
+// CreateTicker is a variable that holds the function to create a new ticker.
+// It can be replaced in tests for mocking purposes.
+var CreateTicker = time.NewTicker

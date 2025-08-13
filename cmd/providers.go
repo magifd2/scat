@@ -8,6 +8,7 @@ import (
 	"github.com/magifd2/scat/internal/provider"
 	"github.com/magifd2/scat/internal/provider/mock"
 	"github.com/magifd2/scat/internal/provider/slack"
+	"github.com/magifd2/scat/internal/provider/testprovider"
 )
 
 // providerFactory defines the function signature for creating a new provider.Interface.
@@ -17,6 +18,7 @@ type providerFactory func(p config.Profile, ctx appcontext.Context) (provider.In
 var providerRegistry = map[string]providerFactory{
 	"slack": slack.NewProvider,
 	"mock":  mock.NewProvider,
+	"test":  testprovider.NewProvider,
 }
 
 // GetProvider retrieves a provider instance based on the provider name in the profile.

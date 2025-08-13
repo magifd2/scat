@@ -1,3 +1,4 @@
+
 package cmd
 
 import (
@@ -19,7 +20,7 @@ func newPostCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "post [message text]",
 		Short: "Post a text message from an argument, file, or stdin",
-		Long:  `Posts a text message. The message content is sourced in the following order of precedence: 1. Command-line argument. 2. --from-file flag. 3. Standard input.`,
+		Long:  `Posts a text message. The message content is sourced in the following order of precedence: 1. Command-line argument. 2. --from-file flag. 3. Standard input.`, 
 		RunE: func(cmd *cobra.Command, args []string) error {
 			appCtx := cmd.Context().Value(appcontext.CtxKey).(appcontext.Context)
 			configPath, err := config.GetConfigPath(appCtx.ConfigPath)
@@ -156,7 +157,7 @@ func handleStream(prov provider.Interface, profileName, overrideUsername, iconEm
 	}()
 
 	var buffer []string
-	ticker := time.NewTicker(3 * time.Second)
+	ticker := CreateTicker(3 * time.Second)
 	defer ticker.Stop()
 
 	for {

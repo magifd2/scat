@@ -82,3 +82,33 @@ Upon approval of this plan, the next steps would involve:
 2.  Implementing mock HTTP servers for external dependencies (e.g., Slack API).
 3.  Writing unit tests for each component as outlined above.
 4.  Integrating test execution into the `Makefile` (already present via `make test`).
+
+## 6. Test Provider (`internal/provider/testprovider`)
+
+To facilitate testing of `cmd` package commands without modifying production code, a dedicated test provider (`internal/provider/testprovider`) has been introduced. This provider is registered in `cmd/providers.go` under the name "test".
+
+**Purpose:**
+-   To act as a mock `provider.Interface` implementation for `cmd` package tests.
+-   To allow verification of calls to `provider.Interface` methods (e.g., `PostMessage`, `PostFile`) by logging their arguments to `os.Stderr`.
+
+**Usage in Tests:**
+1.  Ensure your test configuration uses a profile with `"provider": "test"`.
+2.  Execute the command using `testExecuteCommandAndCapture`.
+3.  Capture the `stderr` output from the command execution.
+4.  Parse the `stderr` output to find `[TESTPROVIDER]` logs, which indicate calls to the test provider's methods and their arguments.
+
+**Example `stderr` log format:**
+-   `[TESTPROVIDER] PostMessage called with opts: {Text:hello world OverrideUsername: IconEmoji:}`
+-   `[TESTPROVIDER] PostFile called with opts: {FilePath:/tmp/test.txt Filename:test.txt Filetype: Comment: OverrideUsername: IconEmoji:}`
+
+## 7. `cmd/post` Command Test (Pending)
+
+**Status:** Implementation is pending due to complexities in mocking `GetProvider` and `time.NewTicker` in earlier iterations. The `testprovider` should now simplify this.
+
+**Goal:** Verify `post` command functionality including message sourcing (args, file, stdin), `--stream` behavior, and `--tee` flag.
+
+**Approach:**
+-   Use a profile configured with `"provider": "test"`.
+-   For message sourcing tests, check `stderr` for `[TESTPROVIDER] PostMessage called with opts: {Text:...}` to verify the message content.
+-   For `--stream` tests, mock `time.NewTicker` using `cmd.CreateTicker` (defined in `cmd/util.go`) to control the timing of message flushing. Verify messages by checking `stderr` logs.
+-   For `--tee` tests, verify `stdout` contains the piped input.
