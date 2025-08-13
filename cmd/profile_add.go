@@ -3,12 +3,10 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"syscall"
 
 	"github.com/magifd2/scat/internal/appcontext"
 	"github.com/magifd2/scat/internal/config"
 	"github.com/spf13/cobra"
-	"golang.org/x/term"
 )
 
 // newProfileAddCmd creates the command for adding a new profile.
@@ -55,14 +53,12 @@ func newProfileAddCmd() *cobra.Command {
 				},
 			}
 
-			// Prompt for token securely
-			fmt.Fprint(os.Stderr, "Enter Token (will not be displayed): ")
-			tokenBytes, err := term.ReadPassword(int(syscall.Stdin))
+			// Prompt for token securely using the new utility function
+			token, err := GetPasswordFromPrompt("Enter Token (will not be displayed): ")
 			if err != nil {
 				return fmt.Errorf("failed to read token: %w", err)
 			}
-			fmt.Fprintln(os.Stderr)
-			newProfile.Token = string(tokenBytes)
+			newProfile.Token = token
 
 			cfg.Profiles[profileName] = newProfile
 
