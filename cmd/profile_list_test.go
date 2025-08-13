@@ -35,7 +35,8 @@ func TestProfileList_Success(t *testing.T) {
 	// Create a temporary config file
 	tempDir := t.TempDir()
 	configPath := filepath.Join(tempDir, "config.json")
-	configContent := `{`
+	// Correctly define the multi-line string literal
+	configContent := `{
 		"current_profile": "default",
 		"profiles": {
 			"default": {
@@ -53,10 +54,9 @@ func TestProfileList_Success(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// We need to re-initialize rootCmd for each test to have a clean state
-	rootCmd, _ := newRootCmd()
-	rootCmd.AddCommand(profileCmd)
-	profileCmd.AddCommand(profileListCmd)
+	// Create a clean command tree for the test
+	rootCmd := newRootCmd() // Correctly call the function
+	rootCmd.AddCommand(newProfileCmd())
 
 	// Execute the command
 	output, err := executeCommand(rootCmd, "--config", configPath, "profile", "list")
@@ -77,9 +77,9 @@ func TestProfileList_NoConfig(t *testing.T) {
 	// Point to a non-existent config file
 	configPath := filepath.Join(t.TempDir(), "non-existent.json")
 
-	rootCmd, _ := newRootCmd()
-	rootCmd.AddCommand(profileCmd)
-	profileCmd.AddCommand(profileListCmd)
+	// Create a clean command tree for the test
+	rootCmd := newRootCmd() // Correctly call the function
+	rootCmd.AddCommand(newProfileCmd())
 
 	// Execute the command
 	_, err := executeCommand(rootCmd, "--config", configPath, "profile", "list")
