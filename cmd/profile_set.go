@@ -1,4 +1,3 @@
-
 package cmd
 
 import (
@@ -6,15 +5,12 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"syscall"
 
 	"github.com/magifd2/scat/internal/appcontext"
 	"github.com/magifd2/scat/internal/config"
 	"github.com/spf13/cobra"
-	"golang.org/x/term"
 )
 
-// newProfileSetCmd creates the command for setting a value in a profile.
 func newProfileSetCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "set [key] [value]",
@@ -49,14 +45,12 @@ For the 'token' key, run 'scat profile set token' and you will be prompted to en
 				if len(args) != 1 {
 					return fmt.Errorf("'set token' does not accept a value argument. Run it alone to be prompted.")
 				}
-				fmt.Fprint(os.Stderr, "Enter new Token (will not be displayed): ")
-		
-				tokenBytes, err := term.ReadPassword(int(syscall.Stdin))
+				// Use the new utility function
+				token, err := GetPasswordFromPrompt("Enter new Token (will not be displayed): ")
 				if err != nil {
 					return fmt.Errorf("failed to read token: %w", err)
 				}
-				fmt.Fprintln(os.Stderr)
-				value = string(tokenBytes)
+				value = token
 			} else {
 				if len(args) != 2 {
 					return fmt.Errorf("key '%s' requires a value", key)
@@ -70,8 +64,6 @@ For the 'token' key, run 'scat profile set token' and you will be prompted to en
 					return fmt.Errorf("invalid provider '%s'. avalid values are 'mock' or 'slack'", value)
 				}
 				profile.Provider = value
-			case "endpoint":
-				profile.Endpoint = value
 			case "channel":
 				profile.Channel = value
 			case "token":
@@ -80,18 +72,18 @@ For the 'token' key, run 'scat profile set token' and you will be prompted to en
 				profile.Username = value
 			case "limits.max_file_size_bytes":
 				size, err := strconv.ParseInt(value, 10, 64)
-					if err != nil {
-						return fmt.Errorf("invalid integer value for %s: %s", key, value)
-					}
+				if err != nil {
+					return fmt.Errorf("invalid integer value for %s: %s", key, value)
+				}
 				profile.Limits.MaxFileSizeBytes = size
 			case "limits.max_stdin_size_bytes":
 				size, err := strconv.ParseInt(value, 10, 64)
-					if err != nil {
-						return fmt.Errorf("invalid integer value for %s: %s", key, value)
-					}
+				if err != nil {
+					return fmt.Errorf("invalid integer value for %s: %s", key, value)
+				}
 				profile.Limits.MaxStdinSizeBytes = size
 			default:
-				availableKeys := []string{"provider", "endpoint", "channel", "token", "username", "limits.max_file_size_bytes", "limits.max_stdin_size_bytes"}
+				availableKeys := []string{"provider", "channel", "token", "username", "limits.max_file_size_bytes", "limits.max_stdin_size_bytes"}
 				return fmt.Errorf("unknown configuration key '%s'.\nAvailable keys: %s", key, strings.Join(availableKeys, ", "))
 			}
 
