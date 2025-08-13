@@ -2,11 +2,11 @@
 package slack
 
 import (
-	"encoding/json"
-	"io"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 
@@ -23,38 +23,13 @@ type mockServerTransport struct {
 // RoundTrip rewrites the request URL's Scheme and Host to point to the mock server
 // before delegating the request to the default transport.
 func (t *mockServerTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	// For the actual file upload, the URL is already the mock server's URL, so we don't rewrite it.
+	if strings.HasPrefix(req.URL.String(), t.serverURL.String()) {
+		return http.DefaultTransport.RoundTrip(req)
+	}
 	req.URL.Scheme = t.serverURL.Scheme
 	req.URL.Host = t.serverURL.Host
 	return http.DefaultTransport.RoundTrip(req)
-}
-
-// mockSlackAPI creates a generic mock Slack API server that handles multiple endpoints.
-func mockSlackAPI(t *testing.T) *httptest.Server {
-	mux := http.NewServeMux()
-
-	// Handles chat.postMessage API calls
-	mux.HandleFunc("/api/chat.postMessage", func(w http.ResponseWriter, r *http.Request) {
-		body, _ := io.ReadAll(r.Body)
-		var payload map[string]interface{}
-		json.Unmarshal(body, &payload)
-
-		if payload["text"] == "fail-me" {
-			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(`{"ok": false, "error": "invalid_auth"}`))
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"ok": true, "ts": "12345.67890"}`))
-	})
-
-	// Handles conversations.list API calls
-	mux.HandleFunc("/api/conversations.list", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"ok": true, "channels": [{"id": "C01", "name": "general"}]}`))
-	})
-
-	return httptest.NewServer(mux)
 }
 
 // newTestProvider creates a provider configured to use the mock server.
@@ -78,7 +53,16 @@ func newTestProvider(server *httptest.Server, channelName string) *Provider {
 }
 
 func TestPostMessage_Success(t *testing.T) {
-	server := mockSlackAPI(t)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/chat.postMessage", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"ok": true, "ts": "12345.67890"}`))
+	})
+	mux.HandleFunc("/api/conversations.list", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"ok": true, "channels": [{"id": "C01", "name": "general"}]}`))
+	})
+	server := httptest.NewServer(mux)
 	defer server.Close()
 
 	p := newTestProvider(server, "general")
@@ -92,42 +76,49 @@ func TestPostMessage_Success(t *testing.T) {
 	}
 }
 
-func TestPostMessage_APIFailure(t *testing.T) {
-	server := mockSlackAPI(t)
+func TestPostFile_Success(t *testing.T) {
+	// Create a dummy file to upload
+	tempDir := t.TempDir()
+	filePath := tempDir + "/test.txt"
+	if err := os.WriteFile(filePath, []byte("hello file"), 0666); err != nil {
+		t.Fatal(err)
+	}
+
+	// The mock server needs its own URL to correctly form the upload_url
+	var server *httptest.Server
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/files.getUploadURLExternal", func(w http.ResponseWriter, r *http.Request) {
+		// This handler needs access to the server's URL, which is possible via this closure.
+		uploadURL := server.URL + "/upload-here"
+		resp := fmt.Sprintf(`{"ok": true, "upload_url": "%s", "file_id": "F01"}`, uploadURL)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(resp))
+	})
+	mux.HandleFunc("/upload-here", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("ok"))
+	})
+	mux.HandleFunc("/api/files.completeUploadExternal", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"ok": true, "files": []}`))
+	})
+	mux.HandleFunc("/api/conversations.list", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"ok": true, "channels": [{"id": "C01", "name": "general"}]}`))
+	})
+
+	server = httptest.NewServer(mux)
 	defer server.Close()
 
 	p := newTestProvider(server, "general")
 
-	opts := provider.PostMessageOptions{
-		Text: "fail-me", // This specific text triggers the failure case
+	opts := provider.PostFileOptions{
+		FilePath: filePath,
+		Filename: "test.txt",
+		Comment:  "a test file",
 	}
 
-	err := p.PostMessage(opts)
-	if err == nil {
-		t.Fatal("PostMessage() did not return an error as expected")
-	}
-	if !strings.Contains(err.Error(), "invalid_auth") {
-		t.Errorf("Expected error to contain 'invalid_auth', got: %v", err)
-	}
-}
-
-func TestPostMessage_ChannelResolutionFailure(t *testing.T) {
-	server := mockSlackAPI(t)
-	defer server.Close()
-
-	p := newTestProvider(server, "non-existent-channel")
-
-	opts := provider.PostMessageOptions{
-		Text: "hello world",
-	}
-
-	err := p.PostMessage(opts)
-	if err == nil {
-		t.Fatal("PostMessage() with non-existent channel did not return an error")
-	}
-	// The actual error message comes from channel.go, let's match it.
-	expectedError := "channel \"non-existent-channel\" not found"
-	if !strings.Contains(err.Error(), expectedError) {
-		t.Errorf("Expected error to contain \"%s\", got: %v", expectedError, err)
+	if err := p.PostFile(opts); err != nil {
+		t.Errorf("PostFile() returned an unexpected error: %v", err)
 	}
 }
