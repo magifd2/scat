@@ -12,6 +12,7 @@ import (
 
 	"github.com/magifd2/scat/internal/appcontext"
 	"github.com/magifd2/scat/internal/config"
+	"github.com/magifd2/scat/internal/export"
 	"github.com/magifd2/scat/internal/provider"
 )
 
@@ -52,7 +53,7 @@ func newTestProvider(server *httptest.Server, channelName string) *Provider {
 	return p
 }
 
-func TestPostMessage_Success(t *testing.T) {
+func TestPostMessage(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/chat.postMessage", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -76,7 +77,7 @@ func TestPostMessage_Success(t *testing.T) {
 	}
 }
 
-func TestPostFile_Success(t *testing.T) {
+func TestPostFile(t *testing.T) {
 	// Create a dummy file to upload
 	tempDir := t.TempDir()
 	filePath := tempDir + "/test.txt"
@@ -84,11 +85,9 @@ func TestPostFile_Success(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// The mock server needs its own URL to correctly form the upload_url
 	var server *httptest.Server
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/files.getUploadURLExternal", func(w http.ResponseWriter, r *http.Request) {
-		// This handler needs access to the server's URL, which is possible via this closure.
 		uploadURL := server.URL + "/upload-here"
 		resp := fmt.Sprintf(`{"ok": true, "upload_url": "%s", "file_id": "F01"}`, uploadURL)
 		w.Header().Set("Content-Type", "application/json")
@@ -120,5 +119,105 @@ func TestPostFile_Success(t *testing.T) {
 
 	if err := p.PostFile(opts); err != nil {
 		t.Errorf("PostFile() returned an unexpected error: %v", err)
+	}
+}
+
+func TestExportLog(t *testing.T) {
+	var server *httptest.Server
+	mux := http.NewServeMux()
+
+	// conversations.history handler with pagination
+	mux.HandleFunc("/api/conversations.history", func(w http.ResponseWriter, r *http.Request) {
+		cursor := r.URL.Query().Get("cursor")
+		var resp string
+		if cursor == "" {
+			// First page
+			resp = fmt.Sprintf(`{
+				"ok": true,
+				"messages": [{"type": "message", "user": "U01", "text": "message 2 <@U02>", "ts": "1678886402.000000", "files": [{"id": "F01", "name": "file1.txt", "url_private_download": "%s/download/file1.txt"}]}],
+				"has_more": true,
+				"response_metadata": {"next_cursor": "cursor123"}
+			}`, server.URL)
+		} else if cursor == "cursor123" {
+			// Second page
+			resp = `{
+				"ok": true,
+				"messages": [{"type": "message", "user": "U02", "text": "message 1", "ts": "1678886401.000000"}],
+				"has_more": false
+			}`
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(resp))
+	})
+
+	// users.info handler
+	mux.HandleFunc("/api/users.info", func(w http.ResponseWriter, r *http.Request) {
+		userID := r.URL.Query().Get("user")
+		userName := ""
+		if userID == "U01" {
+			userName = "user_one"
+		} else if userID == "U02" {
+			userName = "user_two"
+		}
+		resp := fmt.Sprintf(`{"ok": true, "user": {"id": "%s", "name": "%s"}}`, userID, userName)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(resp))
+	})
+
+	// File download handler
+	mux.HandleFunc("/download/file1.txt", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("dummy file content"))
+	})
+
+	// conversations.list for channel ID resolution
+	mux.HandleFunc("/api/conversations.list", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"ok": true, "channels": [{"id": "C01", "name": "test-export"}]}`))
+	})
+
+	server = httptest.NewServer(mux)
+	defer server.Close()
+
+	tempDir := t.TempDir()
+	p := newTestProvider(server, "test-export")
+	opts := export.Options{
+		ChannelName:  "test-export",
+		IncludeFiles: true,
+		OutputDir:    tempDir,
+	}
+
+	log, err := p.ExportLog(opts)
+	if err != nil {
+		t.Fatalf("ExportLog() returned an unexpected error: %v", err)
+	}
+
+	if len(log.Messages) != 2 {
+		t.Fatalf("Expected 2 messages, got %d", len(log.Messages))
+	}
+
+	// Messages are reversed, so page 2 comes first
+	if log.Messages[0].UserName != "user_two" {
+		t.Errorf("Expected first message from user_two, got %s", log.Messages[0].UserName)
+	}
+	if log.Messages[1].UserName != "user_one" {
+		t.Errorf("Expected second message from user_one, got %s", log.Messages[1].UserName)
+	}
+	if !strings.Contains(log.Messages[1].Text, "@user_two") {
+		t.Errorf("Expected mention to be resolved, got: %s", log.Messages[1].Text)
+	}
+	if len(log.Messages[1].Files) != 1 {
+		t.Fatal("Expected 1 file attached to the message")
+	}
+	if log.Messages[1].Files[0].LocalPath == "" {
+		t.Error("Expected LocalPath to be set for downloaded file")
+	}
+
+	// Check downloaded file content
+	fileContent, err := os.ReadFile(log.Messages[1].Files[0].LocalPath)
+	if err != nil {
+		t.Fatalf("Failed to read downloaded file: %v", err)
+	}
+	if string(fileContent) != "dummy file content" {
+		t.Errorf("Unexpected file content: got %s", string(fileContent))
 	}
 }
