@@ -4,6 +4,8 @@ package testprovider
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+	"time"
 
 	"github.com/magifd2/scat/internal/appcontext"
 	"github.com/magifd2/scat/internal/config"
@@ -54,14 +56,32 @@ func (p *Provider) ListChannels() ([]string, error) {
 	return []string{"#test-channel-1", "#test-channel-2"}, nil
 }
 
-// ExportLog logs the export options and returns dummy data.
+// ExportLog logs the export options and returns dummy data that reflects the options.
 func (p *Provider) ExportLog(opts export.Options) (*export.ExportedLog, error) {
 	fmt.Fprintf(os.Stderr, "[TESTPROVIDER] ExportLog called with opts: %+v\n", opts)
+
+	// Create a dummy message
+	message := export.ExportedMessage{
+		Text:      "Test message from ExportLog",
+		UserName:  "testuser",
+		Timestamp: "1672531200.000000", // 2023-01-01 00:00:00 UTC
+	}
+
+	// If file export is requested, add dummy file info
+	if opts.IncludeFiles {
+		message.Files = []export.ExportedFile{
+			{
+				ID:        "F12345678",
+				Name:      "test-file.txt",
+				Mimetype:  "text/plain",
+				LocalPath: filepath.Join(opts.OutputDir, "test-file.txt"),
+			},
+		}
+	}
+
 	return &export.ExportedLog{
-		ChannelName: opts.ChannelName,
-		Messages: []export.ExportedMessage{
-			{Text: "Test message from ExportLog"},
-		},
-	},
-	nil
+		ChannelName:     opts.ChannelName,
+		ExportTimestamp: time.Now().UTC().Format(time.RFC3339),
+		Messages:        []export.ExportedMessage{message},
+	}, nil
 }

@@ -1,13 +1,37 @@
-
 package cmd
 
 import (
 	"bytes"
 	"io"
 	"os"
+	"path/filepath"
+	"testing"
 
 	"github.com/spf13/cobra"
 )
+
+// setupTest an initial setup for tests
+func setupTest(t *testing.T) (string, func()) {
+	// Create a temporary config file
+	tempDir := t.TempDir()
+	configPath := filepath.Join(tempDir, "config.json")
+	configContent := `{
+		"current_profile": "test",
+		"profiles": {
+			"test": {
+				"provider": "test",
+				"channel": "#test-channel"
+			}
+		}
+	}`
+	if err := os.WriteFile(configPath, []byte(configContent), 0666); err != nil {
+		t.Fatal(err)
+	}
+
+	return configPath, func() {
+		// Cleanup if necessary
+	}
+}
 
 // testExecuteCommandAndCapture is a helper function for testing cobra commands.
 // It executes a cobra command and captures its stdout and stderr.

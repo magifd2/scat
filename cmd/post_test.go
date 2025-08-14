@@ -1,37 +1,14 @@
+
 package cmd
 
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 )
-
-// setupTest an initial setup for tests
-func setupTest(t *testing.T) (string, func()) {
-	// Create a temporary config file
-	tempDir := t.TempDir()
-	configPath := filepath.Join(tempDir, "config.json")
-	configContent := `{
-		"current_profile": "test",
-		"profiles": {
-			"test": {
-				"provider": "test",
-				"channel": "#test-channel"
-			}
-		}
-	}`
-	if err := os.WriteFile(configPath, []byte(configContent), 0666); err != nil {
-		t.Fatal(err)
-	}
-
-	return configPath, func() {
-		// Cleanup if necessary
-	}
-}
 
 func TestPost_FromArgument(t *testing.T) {
 	configPath, cleanup := setupTest(t)
