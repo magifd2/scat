@@ -30,12 +30,20 @@ When opening an issue for a bug, please include the following:
     -   `docs:` for documentation changes.
     -   `refactor:` for code changes that neither fix a bug nor add a feature.
     -   `test:` for adding or improving tests.
-4.  **Update the documentation** (`README.md`, etc.) if your changes affect it.
-5.  **Submit the pull request**. Provide a clear description of the problem and your solution.
+4.  **Write tests for your changes**. All new features and bug fixes should be accompanied by appropriate unit tests. Ensure existing tests continue to pass.
+    -   Run `make test` to execute the test suite.
+    -   For CLI commands, consider using the `testprovider` (configured in your `config.json` with `"provider": "test"`) to mock external service interactions. This provider logs method calls to `stderr`, allowing you to verify command behavior.
+5.  **Update the documentation** (`README.md`, etc.) if your changes affect it.
+6.  **Submit the pull request**. Provide a clear description of the problem and your solution.
 
 ## Development Setup
 
 For instructions on how to build the project, run tests, and other development tasks, please see [BUILD.md](./docs/BUILD.md).
+
+To run tests, simply execute:
+```bash
+make test
+```
 
 ### Code Structure Overview
 
