@@ -24,7 +24,7 @@ func TestPost_FromArgument(t *testing.T) {
 	}
 
 	// Check if the test provider's PostMessage was called with the correct options
-	expectedLog := fmt.Sprintf("PostMessage called with opts: {Text:%s OverrideUsername: IconEmoji:}", message)
+	expectedLog := fmt.Sprintf("PostMessage called with opts: {Text:%s OverrideUsername: IconEmoji: Blocks:}", message)
 	if !strings.Contains(stderr, expectedLog) {
 		t.Errorf("Expected stderr to contain '%s', got: '%s'", expectedLog, stderr)
 	}
@@ -56,7 +56,7 @@ func TestPost_FromFile(t *testing.T) {
 	}
 
 	// Check if the test provider's PostMessage was called with the correct options
-	expectedLog := fmt.Sprintf("PostMessage called with opts: {Text:%s OverrideUsername: IconEmoji:}", message)
+	expectedLog := fmt.Sprintf("PostMessage called with opts: {Text:%s OverrideUsername: IconEmoji: Blocks:}", message)
 	if !strings.Contains(stderr, expectedLog) {
 		t.Errorf("Expected stderr to contain '%s', got: '%s'", expectedLog, stderr)
 	}
@@ -87,7 +87,7 @@ func TestPost_FromStdin(t *testing.T) {
 	}
 
 	// Check if the test provider's PostMessage was called with the correct options
-	expectedLog := fmt.Sprintf("PostMessage called with opts: {Text:%s OverrideUsername: IconEmoji:}", message)
+	expectedLog := fmt.Sprintf("PostMessage called with opts: {Text:%s OverrideUsername: IconEmoji: Blocks:}", message)
 	if !strings.Contains(stderr, expectedLog) {
 		t.Errorf("Expected stderr to contain '%s', got: '%s'", expectedLog, stderr)
 	}
@@ -116,7 +116,7 @@ func TestPost_WithOptions(t *testing.T) {
 	}
 
 	// Check if the test provider's PostMessage was called with the correct options
-	expectedLog := fmt.Sprintf("PostMessage called with opts: {Text:%s OverrideUsername:%s IconEmoji:%s}", message, username, iconEmoji)
+	expectedLog := fmt.Sprintf("PostMessage called with opts: {Text:%s OverrideUsername:%s IconEmoji:%s Blocks:}", message, username, iconEmoji)
 	if !strings.Contains(stderr, expectedLog) {
 		t.Errorf("Expected stderr to contain '%s', got: '%s'", expectedLog, stderr)
 	}
@@ -138,7 +138,7 @@ func TestPost_NoMessage(t *testing.T) {
 	// Check the error message
 	expectedError := "no message content provided via argument, --from-file, or stdin"
 	if !strings.Contains(err.Error(), expectedError) {
-		t.Errorf("Expected error message to contain '%s', got: '%v'", expectedError, err)
+		t.Errorf("Expected error message to contain '%s', got: %v", expectedError, err)
 	}
 }
 
@@ -194,5 +194,135 @@ func TestPost_Stream(t *testing.T) {
 	expectedLog := "Text:line 1\nline 2"
 	if !strings.Contains(stderr, expectedLog) {
 		t.Errorf("Expected stderr to contain '%s', got: '%s'", expectedLog, stderr)
+	}
+}
+
+func TestPost_BlockKitFormat_FromArgument(t *testing.T) {
+	configPath, cleanup := setupTest(t)
+	defer cleanup()
+
+	rootCmd := newRootCmd()
+	rootCmd.AddCommand(newPostCmd())
+
+	blockKitJSON := `[{"type": "section", "text": {"type": "mrkdwn", "text": "Hello, Block Kit!"}}]`
+
+	_, stderr, err := testExecuteCommandAndCapture(rootCmd, "--config", configPath, "post", "--format", "blocks", blockKitJSON)
+	if err != nil {
+		t.Fatalf("testExecuteCommandAndCapture returned an error: %v\nStderr: %s", err, stderr)
+	}
+
+	expectedLog := fmt.Sprintf("PostMessage called with opts: {Text: OverrideUsername: IconEmoji: Blocks:%s}", blockKitJSON)
+	if !strings.Contains(stderr, expectedLog) {
+		t.Errorf("Expected stderr to contain '%s', got: '%s'", expectedLog, stderr)
+	}
+}
+
+func TestPost_BlockKitFormat_FromFile(t *testing.T) {
+	configPath, cleanup := setupTest(t)
+	defer cleanup()
+
+	rootCmd := newRootCmd()
+	rootCmd.AddCommand(newPostCmd())
+
+	blockKitJSON := `[{"type": "section", "text": {"type": "mrkdwn", "text": "Hello from file!"}}]`
+	file, err := os.CreateTemp(t.TempDir(), "block-kit-*.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(file.Name())
+	if _, err := file.WriteString(blockKitJSON); err != nil {
+		t.Fatal(err)
+	}
+	file.Close()
+
+	_, stderr, err := testExecuteCommandAndCapture(rootCmd, "--config", configPath, "post", "--format", "blocks", "--from-file", file.Name())
+	if err != nil {
+		t.Fatalf("testExecuteCommandAndCapture returned an error: %v\nStderr: %s", err, stderr)
+	}
+
+	expectedLog := fmt.Sprintf("PostMessage called with opts: {Text: OverrideUsername: IconEmoji: Blocks:%s}", blockKitJSON)
+	if !strings.Contains(stderr, expectedLog) {
+		t.Errorf("Expected stderr to contain '%s', got: '%s'", expectedLog, stderr)
+	}
+}
+
+func TestPost_BlockKitFormat_FromStdin(t *testing.T) {
+	configPath, cleanup := setupTest(t)
+	defer cleanup()
+
+	rootCmd := newRootCmd()
+	rootCmd.AddCommand(newPostCmd())
+
+	blockKitJSON := `[{"type": "section", "text": {"type": "mrkdwn", "text": "Hello from stdin!"}}]`
+	oldStdin := os.Stdin
+	defer func() { os.Stdin = oldStdin }()
+	r, w, _ := os.Pipe()
+	os.Stdin = r
+	go func() {
+		defer w.Close()
+		_, _ = w.WriteString(blockKitJSON)
+	}()
+
+	_, stderr, err := testExecuteCommandAndCapture(rootCmd, "--config", configPath, "post", "--format", "blocks")
+	if err != nil {
+		t.Fatalf("testExecuteCommandAndCapture returned an error: %v\nStderr: %s", err, stderr)
+	}
+
+	expectedLog := fmt.Sprintf("PostMessage called with opts: {Text: OverrideUsername: IconEmoji: Blocks:%s}", blockKitJSON)
+	if !strings.Contains(stderr, expectedLog) {
+		t.Errorf("Expected stderr to contain '%s', got: '%s'", expectedLog, stderr)
+	}
+}
+
+func TestPost_BlockKitFormat_InvalidJson(t *testing.T) {
+	configPath, cleanup := setupTest(t)
+	defer cleanup()
+
+	rootCmd := newRootCmd()
+	rootCmd.AddCommand(newPostCmd())
+
+	invalidJSON := `{"type": "section", "text": {"type": "mrkdwn", "text": "Hello, Block Kit!"}` // Missing closing brace
+
+	_, _, err := testExecuteCommandAndCapture(rootCmd, "--config", configPath, "post", "--format", "blocks", invalidJSON)
+	if err == nil {
+		t.Fatal("Expected an error for invalid JSON, but got nil")
+	}
+
+	if !strings.Contains(err.Error(), "failed to parse block kit JSON") {
+		t.Errorf("Expected error message to contain 'failed to parse block kit JSON', got: %v", err)
+	}
+}
+
+func TestPost_BlockKitFormatAndStreamError(t *testing.T) {
+	configPath, cleanup := setupTest(t)
+	defer cleanup()
+
+	rootCmd := newRootCmd()
+	rootCmd.AddCommand(newPostCmd())
+
+	_, _, err := testExecuteCommandAndCapture(rootCmd, "--config", configPath, "post", "--format", "blocks", "--stream")
+	if err == nil {
+		t.Fatal("Expected an error for --format blocks and --stream, but got nil")
+	}
+
+	if !strings.Contains(err.Error(), "cannot use --stream with --format blocks") {
+		t.Errorf("Expected error message to contain 'cannot use --stream with --format blocks', got: %v", err)
+	}
+}
+
+func TestPost_InvalidFormatFlag(t *testing.T) {
+	configPath, cleanup := setupTest(t)
+	defer cleanup()
+
+	rootCmd := newRootCmd()
+	rootCmd.AddCommand(newPostCmd())
+
+	_, _, err := testExecuteCommandAndCapture(rootCmd, "--config", configPath, "post", "--format", "invalid-format", "test message")
+	if err == nil {
+		t.Fatal("Expected an error for invalid --format flag, but got nil")
+	}
+
+	if !strings.Contains(err.Error(), "invalid value for --format") {
+		t.Errorf("Expected error message to contain 'invalid value for --format', got: %v", err)
 	}
 }

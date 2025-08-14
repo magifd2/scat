@@ -2,6 +2,7 @@ package mock
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -114,6 +115,32 @@ func TestPostMessage_Debug(t *testing.T) {
 
 	if !strings.Contains(output, "[DEBUG] Mock PostMessage") {
 		t.Errorf("Expected output to contain debug marker, got: %s", output)
+	}
+}
+
+func TestPostMessage_WithBlocks(t *testing.T) {
+	ctx := appcontext.NewContext(false, false, false, "")
+	p, _ := NewProvider(config.Profile{}, ctx)
+
+	blocksJSON := []byte(`[{"type": "section", "text": {"type": "mrkdwn", "text": "Hello, Block Kit!"}}]`)
+	opts := provider.PostMessageOptions{Blocks: blocksJSON}
+
+	output := captureStderr(func() {
+		err := p.PostMessage(opts)
+		if err != nil {
+			t.Errorf("PostMessage() error = %v", err)
+		}
+	})
+
+	if !strings.Contains(output, "[MOCK] PostMessage called") {
+		t.Errorf("Expected output to contain PostMessage marker, got: %s", output)
+	}
+	if !strings.Contains(output, fmt.Sprintf("Blocks: %s", string(blocksJSON))) {
+		t.Errorf("Expected output to contain the blocks JSON, got: %s", output)
+	}
+	// Ensure Text field is empty if blocks are present (as per PostMessageOptions logic)
+	if strings.Contains(output, "Text:") && !strings.Contains(output, "Text: "+opts.Text) {
+		t.Errorf("Expected Text field to be empty or not present when blocks are used, got: %s", output)
 	}
 }
 

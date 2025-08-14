@@ -10,6 +10,7 @@ type PostMessageOptions struct {
 	Text             string
 	OverrideUsername string
 	IconEmoji        string
+	Blocks           []byte // New: Block Kit JSON payload
 }
 
 // PostFileOptions defines the parameters for a PostFile call.

@@ -1,4 +1,3 @@
-
 package testprovider
 
 import (
@@ -35,12 +34,13 @@ func (p *Provider) Capabilities() provider.Capabilities {
 		CanPostFile:     true,
 		CanUseIconEmoji: true,
 		CanExportLogs:   true,
+		CanPostBlocks:   true, // New: Test provider supports posting Block Kit messages
 	}
 }
 
 // PostMessage logs the message options to stderr.
 func (p *Provider) PostMessage(opts provider.PostMessageOptions) error {
-	fmt.Fprintf(os.Stderr, "[TESTPROVIDER] PostMessage called with opts: %+v\n", opts)
+	fmt.Fprintf(os.Stderr, "[TESTPROVIDER] PostMessage called with opts: {Text:%s OverrideUsername:%s IconEmoji:%s Blocks:%s}\n", opts.Text, opts.OverrideUsername, opts.IconEmoji, string(opts.Blocks))
 	return nil
 }
 

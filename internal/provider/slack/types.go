@@ -1,26 +1,31 @@
 package slack
 
+import (
+	"encoding/json"
+)
+
 // This file defines the Go structs that directly map to the JSON responses
 // from the Slack API. These are internal to the slack provider.
 
 // apiResponse is a generic response for checking `ok` status and errors.
 type apiResponse struct {
 	Ok    bool   `json:"ok"`
-	Error string `json:"error,omitempty"`
+	Error string `json:"error"`
 }
 
 // messagePayload is the structure for sending a message.
 type messagePayload struct {
 	Channel   string `json:"channel"`
-	Text      string `json:"text"`
+	Text      string `json:"text,omitempty"`
 	Username  string `json:"username,omitempty"`
 	IconEmoji string `json:"icon_emoji,omitempty"`
+	Blocks    json.RawMessage `json:"blocks,omitempty"` // New: Block Kit JSON payload
 }
 
 // conversationsListResponse corresponds to the JSON from conversations.list API
 type conversationsListResponse struct {
 	Ok               bool      `json:"ok"`
-	Error            string    `json:"error,omitempty"`
+	Error            string    `json:"error"`
 	Channels         []channel `json:"channels"`
 	ResponseMetadata metadata  `json:"response_metadata"`
 }
@@ -33,7 +38,7 @@ type channel struct {
 // conversationsHistoryResponse corresponds to the JSON from conversations.history API
 type conversationsHistoryResponse struct {
 	Ok               bool      `json:"ok"`
-	Error            string    `json:"error,omitempty"`
+	Error            string    `json:"error"`
 	Messages         []message `json:"messages"`
 	HasMore          bool      `json:"has_more"`
 	ResponseMetadata metadata  `json:"response_metadata"`
@@ -60,14 +65,14 @@ type file struct {
 type userInfoResponse struct {
 	Ok    bool   `json:"ok"`
 	User  user   `json:"user"`
-	Error string `json:"error,omitempty"`
+	Error string `json:"error"`
 }
 
 // user represents a user object from the Slack API.
 type user struct {
 	ID       string `json:"id"`
 	TeamID   string `json:"team_id"`
-	Name     string `json:"name"`
+	Name     string `json:"name"`	
 	RealName string `json:"real_name"`
 }
 
@@ -79,7 +84,7 @@ type metadata struct {
 // getUploadURLExternalResponse corresponds to the JSON from files.getUploadURLExternal API
 type getUploadURLExternalResponse struct {
 	Ok        bool   `json:"ok"`
-	Error     string `json:"error,omitempty"`
+	Error     string `json:"error"`
 	UploadURL string `json:"upload_url"`
 	FileID    string `json:"file_id"`
 }

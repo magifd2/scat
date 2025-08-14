@@ -29,6 +29,7 @@ func (p *Provider) Capabilities() provider.Capabilities {
 		CanPostFile:     true, // Mock can "handle" file posts
 		CanUseIconEmoji: false,
 		CanExportLogs:   true, // Mock supports exporting for testing purposes
+		CanPostBlocks:   true, // New: Mock supports posting Block Kit messages
 	}
 }
 
@@ -36,10 +37,14 @@ func (p *Provider) Capabilities() provider.Capabilities {
 func (p *Provider) PostMessage(opts provider.PostMessageOptions) error {
 	if !p.Context.Silent {
 		fmt.Fprintln(os.Stderr, "--- [MOCK] PostMessage called ---")
-		fmt.Fprintf(os.Stderr, "Text: %s\n", opts.Text)
+		if len(opts.Blocks) > 0 {
+			fmt.Fprintf(os.Stderr, "Blocks: %s\n", string(opts.Blocks))
+		} else {
+			fmt.Fprintf(os.Stderr, "Text: %s\n", opts.Text)
+		}
 	}
 	if p.Context.Debug {
-		fmt.Fprintf(os.Stderr, "[DEBUG] Mock PostMessage: Text=\"%s\", Username=\"%s\", IconEmoji=\"%s\"\n", opts.Text, opts.OverrideUsername, opts.IconEmoji)
+		fmt.Fprintf(os.Stderr, "[DEBUG] Mock PostMessage: Text=\"%s\", Username=\"%s\", IconEmoji=\"%s\", Blocks=\"%s\"\n", opts.Text, opts.OverrideUsername, opts.IconEmoji, string(opts.Blocks))
 	}
 	return nil
 }

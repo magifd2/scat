@@ -43,5 +43,6 @@ func (p *Provider) Capabilities() provider.Capabilities {
 		CanPostFile:     true,
 		CanUseIconEmoji: true,
 		CanExportLogs:   true,
+		CanPostBlocks:   true, // New: Slack supports posting Block Kit messages
 	}
 }

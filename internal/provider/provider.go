@@ -8,6 +8,7 @@ type Capabilities struct {
 	CanPostFile     bool // Whether the provider can post files.
 	CanUseIconEmoji bool // Whether the provider supports custom icon emojis.
 	CanExportLogs   bool // Whether the provider can export channel logs.
+	CanPostBlocks   bool // New: Whether the provider can post Block Kit messages.
 }
 
 // Interface defines the methods that a provider must implement.

@@ -1,8 +1,8 @@
-
 package cmd
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -53,6 +53,7 @@ func newPostCmd() *cobra.Command {
 			channel, _ := cmd.Flags().GetString("channel")
 			tee, _ := cmd.Flags().GetBool("tee")
 			fromFile, _ := cmd.Flags().GetString("from-file")
+			format, _ := cmd.Flags().GetString("format") // New: Get format flag
 
 			// Override channel from profile if flag is set
 			if channel != "" {
@@ -65,18 +66,24 @@ func newPostCmd() *cobra.Command {
 				return err
 			}
 
-			// Handle stream
+			// --- Flag Validation and Exclusive Handling ---
 			stream, _ := cmd.Flags().GetBool("stream")
-			if stream {
-				// Stream only works with stdin
-				if len(args) > 0 || fromFile != "" {
-					return fmt.Errorf("cannot use arguments or --from-file with --stream flag")
-				}
-				return handleStream(prov, profileName, username, iconEmoji, tee, appCtx.Silent)
+
+			// Validate format flag value
+			if format != "text" && format != "blocks" {
+				return fmt.Errorf("invalid value for --format: %s. Must be 'text' or 'blocks'", format)
 			}
 
-			// Determine message content from args, file, or stdin
+			// Exclusive handling for --stream and --format blocks
+			if stream && format == "blocks" {
+				return fmt.Errorf("cannot use --stream with --format blocks")
+			}
+
+			// --- Determine message content and format ---
 			var content string
+			var blocks json.RawMessage // Changed: Use json.RawMessage
+
+			// Read content from args, file, or stdin
 			if len(args) > 0 {
 				content = strings.Join(args, " ")
 			} else if fromFile != "" {
@@ -106,7 +113,29 @@ func newPostCmd() *cobra.Command {
 				}
 			}
 
-			if tee && fromFile == "" && len(args) == 0 { // only tee stdin
+			// If format is blocks, parse content as JSON
+			if format == "blocks" {
+				// Attempt to unmarshal into a temporary map to check for the "blocks" key
+				var tempMap map[string]json.RawMessage
+				if err := json.Unmarshal([]byte(content), &tempMap); err != nil {
+					// If it's not a map, or unmarshalling fails, try to unmarshal directly as an array
+					var tempArray []interface{}
+					if err := json.Unmarshal([]byte(content), &tempArray); err != nil {
+						return fmt.Errorf("failed to parse block kit JSON: expected a JSON object with a 'blocks' key or a JSON array of blocks: %w", err)
+					}
+					// If it's a direct array, use the content as is
+					blocks = json.RawMessage(content)
+				} else if rawBlocks, ok := tempMap["blocks"]; ok {
+					// If it's a map with a "blocks" key, extract the value of "blocks"
+					blocks = rawBlocks
+				} else {
+					// If it's a map but no "blocks" key, it's an invalid format for Block Kit
+					return fmt.Errorf("failed to parse block kit JSON: expected a JSON object with a 'blocks' key or a JSON array of blocks")
+				}
+			}
+
+			// Tee output if requested (only for stdin, and not for blocks as it's structured data)
+			if tee && fromFile == "" && len(args) == 0 && format == "text" { // only tee stdin for text format
 				fmt.Print(content)
 			}
 
@@ -115,7 +144,18 @@ func newPostCmd() *cobra.Command {
 				Text:             content,
 				OverrideUsername: username,
 				IconEmoji:        iconEmoji,
+				Blocks:           blocks, // Set blocks
 			}
+			// If blocks are present, clear text to ensure blocks are prioritized by provider
+			if len(opts.Blocks) > 0 {
+				opts.Text = ""
+			}
+
+			// Check if provider supports blocks if format is blocks
+			if format == "blocks" && !prov.Capabilities().CanPostBlocks {
+				return fmt.Errorf("the provider for profile '%s' does not support posting Block Kit messages", profileName)
+			}
+
 			if err := prov.PostMessage(opts); err != nil {
 				return fmt.Errorf("failed to post message: %w", err)
 			}
@@ -134,6 +174,7 @@ func newPostCmd() *cobra.Command {
 	cmd.Flags().BoolP("tee", "t", false, "Print stdin to screen before posting")
 	cmd.Flags().StringP("username", "u", "", "Override the username for this post")
 	cmd.Flags().StringP("iconemoji", "i", "", "Icon emoji to use for the post (slack provider only)")
+	cmd.Flags().String("format", "text", "Message format (text or blocks)") // Add format flag
 
 	return cmd
 }
@@ -171,14 +212,14 @@ func handleStream(prov provider.Interface, profileName, overrideUsername, iconEm
 						OverrideUsername: overrideUsername,
 						IconEmoji:        iconEmoji,
 					}
-					if err := prov.PostMessage(opts); err != nil {
-						fmt.Fprintf(os.Stderr, "Error flushing remaining lines: %v\n", err)
+						if err := prov.PostMessage(opts); err != nil {
+							fmt.Fprintf(os.Stderr, "Error flushing remaining lines: %v\n", err)
+						}
 					}
-				}
-				if !silent {
-					fmt.Fprintln(os.Stderr, "Stream finished.")
-				}
-				return nil
+					if !silent {
+						fmt.Fprintln(os.Stderr, "Stream finished.")
+					}
+					return nil
 			}
 			buffer = append(buffer, line)
 		case <-ticker.C:
@@ -188,14 +229,14 @@ func handleStream(prov provider.Interface, profileName, overrideUsername, iconEm
 					OverrideUsername: overrideUsername,
 					IconEmoji:        iconEmoji,
 				}
-				if err := prov.PostMessage(opts); err != nil {
-					fmt.Fprintf(os.Stderr, "Error posting message: %v\n", err)
+						if err := prov.PostMessage(opts); err != nil {
+							fmt.Fprintf(os.Stderr, "Error posting message: %v\n", err)
+						}
+						if !silent {
+							fmt.Fprintf(os.Stderr, "Posted %d lines to profile '%s'.\n", len(buffer), profileName)
+						}
+					buffer = nil
 				}
-				if !silent {
-					fmt.Fprintf(os.Stderr, "Posted %d lines to profile '%s'.\n", len(buffer), profileName)
-				}
-				buffer = nil
-			}
 		}
 	}
 }
