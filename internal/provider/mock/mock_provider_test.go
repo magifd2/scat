@@ -28,10 +28,10 @@ func captureStderr(f func()) string {
 	}()
 
 	f()
-	w.Close()
+	_ = w.Close()
 
 	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	_, _ = io.Copy(&buf, r)
 	return buf.String()
 }
 

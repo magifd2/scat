@@ -49,14 +49,14 @@ func testExecuteCommandAndCapture(root *cobra.Command, args ...string) (stdout s
 	err = root.Execute()
 
 	// Restore stdout/stderr and read the captured output
-	wOut.Close()
-	wErr.Close()
+	_ = wOut.Close()
+	_ = wErr.Close()
 	os.Stdout = oldStdout
 	os.Stderr = oldStderr
 
 	var bufOut, bufErr bytes.Buffer
-	io.Copy(&bufOut, rOut)
-	io.Copy(&bufErr, rErr)
+	_, _ = io.Copy(&bufOut, rOut)
+	_, _ = io.Copy(&bufErr, rErr)
 
 	stdout = bufOut.String()
 	stderr = bufErr.String()

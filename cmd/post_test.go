@@ -1,4 +1,3 @@
-
 package cmd
 
 import (
@@ -78,7 +77,7 @@ func TestPost_FromStdin(t *testing.T) {
 	os.Stdin = r
 	go func() {
 		defer w.Close()
-		w.WriteString(message)
+		_, _ = w.WriteString(message) // Modified: Ignore error return
 	}()
 
 	// Execute the command
@@ -178,8 +177,8 @@ func TestPost_Stream(t *testing.T) {
 
 	// Write to stdin in a separate goroutine and close the writer when done.
 	go func() {
-		w.WriteString(message)
-		w.Close() // This will terminate the scanner in the command
+		_, _ = w.WriteString(message) // Modified: Ignore error return
+		_ = w.Close() // Modified: Ignore error return
 	}()
 
 	// Wait a moment for the command to start up and read the input.

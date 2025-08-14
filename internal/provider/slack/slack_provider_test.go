@@ -1,4 +1,3 @@
-
 package slack
 
 import (
@@ -57,11 +56,11 @@ func TestPostMessage(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/chat.postMessage", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"ok": true, "ts": "12345.67890"}`))
+		_, _ = w.Write([]byte(`{"ok": true, "ts": "12345.67890"}`)) // Modified: Ignore error return
 	})
 	mux.HandleFunc("/api/conversations.list", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"ok": true, "channels": [{"id": "C01", "name": "general"}]}`))
+		_, _ = w.Write([]byte(`{"ok": true, "channels": [{"id": "C01", "name": "general"}]}`)) // Modified: Ignore error return
 	})
 	server := httptest.NewServer(mux)
 	defer server.Close()
@@ -91,19 +90,19 @@ func TestPostFile(t *testing.T) {
 		uploadURL := server.URL + "/upload-here"
 		resp := fmt.Sprintf(`{"ok": true, "upload_url": "%s", "file_id": "F01"}`, uploadURL)
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(resp))
+		_, _ = w.Write([]byte(resp)) // Modified: Ignore error return
 	})
 	mux.HandleFunc("/upload-here", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("ok"))
+		_, _ = w.Write([]byte("ok")) // Modified: Ignore error return
 	})
 	mux.HandleFunc("/api/files.completeUploadExternal", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"ok": true, "files": []}`))
+		_, _ = w.Write([]byte(`{"ok": true, "files": []}`)) // Modified: Ignore error return
 	})
 	mux.HandleFunc("/api/conversations.list", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"ok": true, "channels": [{"id": "C01", "name": "general"}]}`))
+		_, _ = w.Write([]byte(`{"ok": true, "channels": [{"id": "C01", "name": "general"}]}`)) // Modified: Ignore error return
 	})
 
 	server = httptest.NewServer(mux)
@@ -146,8 +145,7 @@ func TestExportLog(t *testing.T) {
 				"has_more": false
 			}`
 		}
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(resp))
+		_, _ = w.Write([]byte(resp)) // Modified: Ignore error return
 	})
 
 	// users.info handler
@@ -160,19 +158,18 @@ func TestExportLog(t *testing.T) {
 			userName = "user_two"
 		}
 		resp := fmt.Sprintf(`{"ok": true, "user": {"id": "%s", "name": "%s"}}`, userID, userName)
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(resp))
+		_, _ = w.Write([]byte(resp)) // Modified: Ignore error return
 	})
 
 	// File download handler
 	mux.HandleFunc("/download/file1.txt", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("dummy file content"))
+		_, _ = w.Write([]byte("dummy file content")) // Modified: Ignore error return
 	})
 
 	// conversations.list for channel ID resolution
 	mux.HandleFunc("/api/conversations.list", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"ok": true, "channels": [{"id": "C01", "name": "test-export"}]}`))
+		_, _ = w.Write([]byte(`{"ok": true, "channels": [{"id": "C01", "name": "test-export"}]}`)) // Modified: Ignore error return
 	})
 
 	server = httptest.NewServer(mux)

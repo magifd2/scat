@@ -6,8 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	_ "github.com/magifd2/scat/internal/provider/testprovider"
 )
 
 func TestUpload_FromFile(t *testing.T) {
@@ -52,7 +50,7 @@ func TestUpload_FromStdin(t *testing.T) {
 	os.Stdin = r
 	go func() {
 		defer w.Close()
-		w.WriteString(content)
+		_, _ = w.WriteString(content) // Modified: Ignore error return
 	}()
 
 	// Execute the command
