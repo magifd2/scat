@@ -68,6 +68,18 @@ Here are some common ways to use `scat`.
 -   **From standard input (pipe)**:
     `echo "This message was piped." | scat post`
 
+### Posting Block Kit Messages (`post` with `--format blocks`)
+
+-   **From an argument (JSON string)**:
+    `scat post --format blocks '[{"type": "section", "text": {"type": "mrkdwn", "text": "Hello, Block Kit from argument!"}}]'`
+
+-   **From a file (JSON file)**:
+    (Create a file named `blocks.json` with Block Kit JSON content)
+    `scat post --format blocks --from-file ./blocks.json`
+
+-   **From standard input (JSON pipe)**:
+    `echo '[{"type": "section", "text": {"type": "mrkdwn", "text": "Hello, Block Kit from stdin!"}}]' | scat post --format blocks`
+
 ### Uploading Files (`upload`)
 
 -   **Upload a file from a path**:
@@ -123,6 +135,7 @@ Here are some common ways to use `scat`.
 | `--tee`       | `-t`      | Print stdin to screen while posting.      |
 | `--username`  | `-u`      | Override the username for this post.      |
 | `--iconemoji` | `-i`      | Icon emoji to use (Slack provider only).  |
+| `--format`    |           | Message format (`text` or `blocks`). Default is `text`. |
 
 ### `upload` Command Flags
 
@@ -140,7 +153,7 @@ Here are some common ways to use `scat`.
 | --------------- | --------- | ------------------------------------------------ |
 | `--channel`     | `-c`      | **Required.** Channel to export from.            |
 | `--output`      |           | Output file path for the log. Use `-` for stdout (default). |
-| `--output-files`|           | Directory to save downloaded files. If set to `auto`, a directory is auto-generated. If not set, files are not downloaded. |
+| `--output-files`|           | Directory to save downloaded files. If set to `auto`, a directory is auto-generated. |
 | `--output-format` |         | Output format (`json` or `text`).                |
 | `--start-time`  |           | Start of time range (RFC3339 format).            |
 | `--end-time`    |           | End of time range (RFC3339 format).              |

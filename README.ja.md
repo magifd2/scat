@@ -68,6 +68,18 @@ make build
 -   **標準入力から (パイプ)**:
     `echo "このメッセージはパイプされました。" | scat post`
 
+### Block Kit メッセージの投稿 (`post` と `--format blocks`)
+
+-   **引数から (JSON文字列)**:
+    `scat post --format blocks '[{"type": "section", "text": {"type": "mrkdwn", "text": "引数からBlock Kit！"}}]'`
+
+-   **ファイルから (JSONファイル)**:
+    (Block Kit JSONコンテンツを含む `blocks.json` というファイルを作成してください)
+    `scat post --format blocks --from-file ./blocks.json`
+
+-   **標準入力から (JSONパイプ)**:
+    `echo '[{"type": "section", "text": {"type": "mrkdwn", "text": "標準入力からBlock Kit！"}}]' | scat post --format blocks`
+
 ### ファイルのアップロード (`upload`)
 
 -   **パスを指定してファイルをアップロード**:
@@ -116,13 +128,14 @@ make build
 ### `post` コマンドのフラグ
 
 | フラグ          | 短縮形 | 説明                                           |
-| ------------- | ------ | ---------------------------------------------- |
+| --------------- | ------ | ---------------------------------------------- |
 | `--channel`   | `-c`   | この投稿の宛先チャンネル (IDまたは名前) を上書きします。 |
 | `--from-file` |        | メッセージ本文をファイルから読み込みます。       |
 | `--stream`    | `-s`   | 標準入力からメッセージを継続的にストリームします。|
 | `--tee`       | `-t`   | 投稿前に標準入力の内容を画面に出力します。     |
 | `--username`  | `-u`   | この投稿のユーザー名を上書きします。             |
 | `--iconemoji` | `-i`   | 使用するアイコン絵文字 (Slackプロバイダのみ)。   |
+| `--format`    |        | メッセージのフォーマット (`text` または `blocks`)。デフォルトは `text`。 |
 
 ### `upload` コマンドのフラグ
 
