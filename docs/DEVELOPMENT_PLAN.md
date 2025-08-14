@@ -52,10 +52,10 @@ This document outlines the development status and future roadmap for `scat`.
 
 ### 3. Advanced Features (Priority: Medium)
 
-#### 3.1. Block Kit Support for `post` command
+#### 3.1. Block Kit Support for `post` command (Completed)
 
--   **Goal**: Extend the `scat post` command to support posting rich messages using Slack's Block Kit framework.
--   **Approach**: Introduce a `--format blocks` flag to specify that the message content is a Block Kit JSON payload.
+-   **Goal**: Extended the `scat post` command to support posting rich messages using Slack's Block Kit framework.
+-   **Approach**: Introduced a `--format blocks` flag to specify that the message content is a Block Kit JSON payload.
 -   **Specification Details**:
     -   **`--format` Flag Behavior**:
         -   A new `string` flag `--format` will be added to the `post` command.
