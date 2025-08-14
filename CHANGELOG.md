@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2025-08-14
+
+### Features
+
+- **Comprehensive Test Suite**: Implemented a robust testing framework, significantly increasing test coverage and project stability.
+    - Added unit tests for `post`, `upload`, `export log`, `channel list`, and `config init` commands.
+    - Added unit tests for the `GetProvider` function (provider factory) and the `test_provider` itself.
+
+### Refactoring
+
+- **Provider File Naming**: Renamed provider source and test files (`mock`, `slack`, `test_provider`) to use a consistent `snake_case` naming convention.
+- **Test Helpers**: Moved `setupTest` helper function to `test_helpers.go` for shared use across `cmd` package tests.
+
+### Documentation
+
+- **Development Plan**: Updated `DEVELOPMENT_PLAN.md` to reflect the completed comprehensive testing framework and refactoring efforts.
+- **Contributing Guide**: Updated `CONTRIBUTING.md` with guidelines for writing tests, reflecting the new comprehensive test suite.
+- **Removed Testing Plan**: Deleted `TESTING_FRAMEWORK_PLAN.md` as its content has been integrated into `DEVELOPMENT_PLAN.md`.
+
 ## [1.4.0] - 2025-08-12
 
 ### Features
