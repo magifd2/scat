@@ -11,6 +11,7 @@ type ExportedLog struct {
 type ExportedMessage struct {
 	UserID        string         `json:"user_id"`
 	UserName      string         `json:"user_name,omitempty"`
+	PostType      string         `json:"post_type,omitempty"` // "user" or "bot"
 	Timestamp     string         `json:"timestamp"`
 	TimestampUnix string         `json:"timestamp_unix"`
 	Text          string         `json:"text"`

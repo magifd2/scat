@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+ ## [1.7.0] - 2025-08-15
+
+ ### Features
+
+- **Enhanced `export log` output**: Improved the `scat export log` command output to provide more comprehensive user information.
+    - Populated `user_id` with `bot_id` for bot messages, ensuring a consistent identifier for all message types.
+    - Introduced a new `post_type` field (`"user"` or `"bot"`) to clearly distinguish between human and bot posts.
+
+ ### Documentation
+
+- **New Export Data Format documentation**: Created `docs/EXPORT_FORMAT.md` to detail the structure of the `export log` output.
+- Updated `README.md` to link to the new export data format documentation.
+
  ## [1.6.0] - 2025-08-14 
  
  ### Features

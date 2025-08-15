@@ -31,9 +31,27 @@ func (p *Provider) ExportLog(opts export.Options) (*export.ExportedLog, error) {
 		}
 
 		for _, msg := range resp.Messages {
-			userName, err := p.resolveUserName(msg.UserID, userCache, &userCacheMux)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Warning: could not resolve user %s: %v\n", msg.UserID, err)
+			var userID string
+			var postType string
+			userName := ""
+			if msg.SubType == "bot_message" {
+				if msg.Username != "" {
+					userName = msg.Username
+				} else if msg.BotID != "" {
+					// For now, just use BotID as the name.
+					// A more sophisticated solution might involve calling bots.info API.
+					userName = fmt.Sprintf("bot:%s", msg.BotID)
+				}
+				userID = msg.BotID // Set UserID to BotID for bot messages
+				postType = "bot"
+			} else {
+				var err error
+				userName, err = p.resolveUserName(msg.UserID, userCache, &userCacheMux)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: could not resolve user %s: %v\n", msg.UserID, err)
+				}
+				userID = msg.UserID // Keep original UserID for non-bot messages
+				postType = "user"
 			}
 
 			files, err := p.handleAttachedFiles(msg.Files, opts.OutputDir, opts.IncludeFiles)
@@ -54,8 +72,9 @@ func (p *Provider) ExportLog(opts export.Options) (*export.ExportedLog, error) {
 			}
 
 			exportedMsg := export.ExportedMessage{
-				UserID:        msg.UserID,
+				UserID:        userID, // Use the new userID variable
 				UserName:      userName,
+				PostType:      postType, // Populate PostType
 				Timestamp:     rfc3339Time,
 				TimestampUnix: msg.Timestamp,
 				Text:          resolvedText,
