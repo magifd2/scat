@@ -40,3 +40,6 @@ go.work.sum
 
 # Test data
 testdata/
+
+# IDE
+.vscode/
