@@ -51,6 +51,9 @@ type message struct {
 	UserID    string `json:"user"`
 	Text      string `json:"text"`
 	Files     []file `json:"files,omitempty"`
+	SubType   string `json:"subtype,omitempty"`
+	Username  string `json:"username,omitempty"`
+	BotID     string `json:"bot_id,omitempty"`
 }
 
 // file represents a file object from the Slack API.

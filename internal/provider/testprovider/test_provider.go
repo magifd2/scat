@@ -12,6 +12,8 @@ import (
 	"github.com/magifd2/scat/internal/provider"
 )
 
+var PostMessageSignal chan struct{}
+
 // Provider implements the provider.Interface for testing purposes.
 type Provider struct {
 	Profile config.Profile
@@ -40,6 +42,12 @@ func (p *Provider) Capabilities() provider.Capabilities {
 
 // PostMessage logs the message options to stderr.
 func (p *Provider) PostMessage(opts provider.PostMessageOptions) error {
+	if opts.Text == `{"test_command": "signal_done"}` {
+		if PostMessageSignal != nil {
+			PostMessageSignal <- struct{}{}
+		}
+		return nil
+	}
 	fmt.Fprintf(os.Stderr, "[TESTPROVIDER] PostMessage called with opts: {Text:%s OverrideUsername:%s IconEmoji:%s Blocks:%s}\n", opts.Text, opts.OverrideUsername, opts.IconEmoji, string(opts.Blocks))
 	return nil
 }

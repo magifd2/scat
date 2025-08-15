@@ -79,6 +79,10 @@ func newPostCmd() *cobra.Command {
 				return fmt.Errorf("cannot use --stream with --format blocks")
 			}
 
+			if stream {
+				return handleStream(prov, profileName, username, iconEmoji, tee, appCtx.Silent)
+			}
+
 			// --- Determine message content and format ---
 			var content string
 			var blocks json.RawMessage // Changed: Use json.RawMessage
@@ -212,9 +216,9 @@ func handleStream(prov provider.Interface, profileName, overrideUsername, iconEm
 						OverrideUsername: overrideUsername,
 						IconEmoji:        iconEmoji,
 					}
-						if err := prov.PostMessage(opts); err != nil {
-							fmt.Fprintf(os.Stderr, "Error flushing remaining lines: %v\n", err)
-						}
+							if err := prov.PostMessage(opts); err != nil {
+								fmt.Fprintf(os.Stderr, "Error flushing remaining lines: %v\n", err)
+							}
 					}
 					if !silent {
 						fmt.Fprintln(os.Stderr, "Stream finished.")
@@ -229,12 +233,12 @@ func handleStream(prov provider.Interface, profileName, overrideUsername, iconEm
 					OverrideUsername: overrideUsername,
 					IconEmoji:        iconEmoji,
 				}
-						if err := prov.PostMessage(opts); err != nil {
-							fmt.Fprintf(os.Stderr, "Error posting message: %v\n", err)
-						}
-						if !silent {
-							fmt.Fprintf(os.Stderr, "Posted %d lines to profile '%s'.\n", len(buffer), profileName)
-						}
+							if err := prov.PostMessage(opts); err != nil {
+								fmt.Fprintf(os.Stderr, "Error posting message: %v\n", err)
+							}
+							if !silent {
+								fmt.Fprintf(os.Stderr, "Posted %d lines to profile '%s'.\n", len(buffer), profileName)
+							}
 					buffer = nil
 				}
 		}

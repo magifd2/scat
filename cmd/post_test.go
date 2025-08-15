@@ -178,7 +178,7 @@ func TestPost_Stream(t *testing.T) {
 	// Write to stdin in a separate goroutine and close the writer when done.
 	go func() {
 		_, _ = w.WriteString(message) // Modified: Ignore error return
-		_ = w.Close() // Modified: Ignore error return
+		_ = w.Close()                 // Modified: Ignore error return
 	}()
 
 	// Wait a moment for the command to start up and read the input.
