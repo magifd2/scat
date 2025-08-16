@@ -7,14 +7,24 @@ package provider
 
 // PostMessageOptions defines the parameters for a PostMessage call.
 type PostMessageOptions struct {
+	// TargetChannel specifies the destination channel name or ID.
+	// If provided, this overrides the default channel configured in the provider's profile.
+	// If left empty, the provider's default channel is used as a fallback.
+	TargetChannel string
+
 	Text             string
 	OverrideUsername string
 	IconEmoji        string
-	Blocks           []byte // New: Block Kit JSON payload
+	Blocks           []byte
 }
 
 // PostFileOptions defines the parameters for a PostFile call.
 type PostFileOptions struct {
+	// TargetChannel specifies the destination channel name or ID.
+	// If provided, this overrides the default channel configured in the provider's profile.
+	// If left empty, the provider's default channel is used as a fallback.
+	TargetChannel string
+
 	FilePath         string
 	Filename         string
 	Filetype         string

@@ -36,7 +36,7 @@ func (p *Provider) Capabilities() provider.Capabilities {
 		CanPostFile:     true,
 		CanUseIconEmoji: true,
 		CanExportLogs:   true,
-		CanPostBlocks:   true, // New: Test provider supports posting Block Kit messages
+		CanPostBlocks:   true,
 	}
 }
 
@@ -48,13 +48,49 @@ func (p *Provider) PostMessage(opts provider.PostMessageOptions) error {
 		}
 		return nil
 	}
-	fmt.Fprintf(os.Stderr, "[TESTPROVIDER] PostMessage called with opts: {Text:%s OverrideUsername:%s IconEmoji:%s Blocks:%s}\n", opts.Text, opts.OverrideUsername, opts.IconEmoji, string(opts.Blocks))
+
+	// Determine the target channel. Priority: Options -> Profile default.
+	targetChannelName := p.Profile.Channel
+	if opts.TargetChannel != "" {
+		targetChannelName = opts.TargetChannel
+	}
+
+	// Note: No error for empty channel in test provider, to allow testing that case.
+
+	fmt.Fprintf(os.Stderr, "[TESTPROVIDER] PostMessage called with opts: {TargetChannel:%s Text:%s OverrideUsername:%s IconEmoji:%s Blocks:%s}\n", targetChannelName, opts.Text, opts.OverrideUsername, opts.IconEmoji, string(opts.Blocks))
 	return nil
 }
 
 // PostFile logs the file options to stderr.
 func (p *Provider) PostFile(opts provider.PostFileOptions) error {
-	fmt.Fprintf(os.Stderr, "[TESTPROVIDER] PostFile called with opts: %+v\n", opts)
+	// Determine the target channel. Priority: Options -> Profile default.
+	targetChannelName := p.Profile.Channel
+	if opts.TargetChannel != "" {
+		targetChannelName = opts.TargetChannel
+	}
+
+	// Note: No error for empty channel in test provider.
+
+	// Create a temporary struct for logging that includes the resolved channel.
+	logOpts := struct {
+		TargetChannel    string
+		FilePath         string
+		Filename         string
+		Filetype         string
+		Comment          string
+		OverrideUsername string
+		IconEmoji        string
+	}{
+		TargetChannel:    targetChannelName,
+		FilePath:         opts.FilePath,
+		Filename:         opts.Filename,
+		Filetype:         opts.Filetype,
+		Comment:          opts.Comment,
+		OverrideUsername: opts.OverrideUsername,
+		IconEmoji:        opts.IconEmoji,
+	}
+
+	fmt.Fprintf(os.Stderr, "[TESTPROVIDER] PostFile called with opts: %+v\n", logOpts)
 	return nil
 }
 

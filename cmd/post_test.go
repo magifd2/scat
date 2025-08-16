@@ -24,7 +24,7 @@ func TestPost_FromArgument(t *testing.T) {
 	}
 
 	// Check if the test provider's PostMessage was called with the correct options
-	expectedLog := fmt.Sprintf("PostMessage called with opts: {Text:%s OverrideUsername: IconEmoji: Blocks:}", message)
+	expectedLog := fmt.Sprintf("PostMessage called with opts: {TargetChannel:%s Text:%s OverrideUsername: IconEmoji: Blocks:}", "#test-channel", message)
 	if !strings.Contains(stderr, expectedLog) {
 		t.Errorf("Expected stderr to contain '%s', got: '%s'", expectedLog, stderr)
 	}
@@ -56,7 +56,7 @@ func TestPost_FromFile(t *testing.T) {
 	}
 
 	// Check if the test provider's PostMessage was called with the correct options
-	expectedLog := fmt.Sprintf("PostMessage called with opts: {Text:%s OverrideUsername: IconEmoji: Blocks:}", message)
+	expectedLog := fmt.Sprintf("PostMessage called with opts: {TargetChannel:%s Text:%s OverrideUsername: IconEmoji: Blocks:}", "#test-channel", message)
 	if !strings.Contains(stderr, expectedLog) {
 		t.Errorf("Expected stderr to contain '%s', got: '%s'", expectedLog, stderr)
 	}
@@ -87,7 +87,7 @@ func TestPost_FromStdin(t *testing.T) {
 	}
 
 	// Check if the test provider's PostMessage was called with the correct options
-	expectedLog := fmt.Sprintf("PostMessage called with opts: {Text:%s OverrideUsername: IconEmoji: Blocks:}", message)
+	expectedLog := fmt.Sprintf("PostMessage called with opts: {TargetChannel:%s Text:%s OverrideUsername: IconEmoji: Blocks:}", "#test-channel", message)
 	if !strings.Contains(stderr, expectedLog) {
 		t.Errorf("Expected stderr to contain '%s', got: '%s'", expectedLog, stderr)
 	}
@@ -116,7 +116,7 @@ func TestPost_WithOptions(t *testing.T) {
 	}
 
 	// Check if the test provider's PostMessage was called with the correct options
-	expectedLog := fmt.Sprintf("PostMessage called with opts: {Text:%s OverrideUsername:%s IconEmoji:%s Blocks:}", message, username, iconEmoji)
+	expectedLog := fmt.Sprintf("PostMessage called with opts: {TargetChannel:%s Text:%s OverrideUsername:%s IconEmoji:%s Blocks:}", channel, message, username, iconEmoji)
 	if !strings.Contains(stderr, expectedLog) {
 		t.Errorf("Expected stderr to contain '%s', got: '%s'", expectedLog, stderr)
 	}
@@ -191,7 +191,7 @@ func TestPost_Stream(t *testing.T) {
 	wg.Wait()
 
 	// Check if the test provider's PostMessage was called with the correct, combined text.
-	expectedLog := "Text:line 1\nline 2"
+	expectedLog := "TargetChannel:#test-channel Text:line 1\nline 2"
 	if !strings.Contains(stderr, expectedLog) {
 		t.Errorf("Expected stderr to contain '%s', got: '%s'", expectedLog, stderr)
 	}
@@ -211,7 +211,7 @@ func TestPost_BlockKitFormat_FromArgument(t *testing.T) {
 		t.Fatalf("testExecuteCommandAndCapture returned an error: %v\nStderr: %s", err, stderr)
 	}
 
-	expectedLog := fmt.Sprintf("PostMessage called with opts: {Text: OverrideUsername: IconEmoji: Blocks:%s}", blockKitJSON)
+	expectedLog := fmt.Sprintf("PostMessage called with opts: {TargetChannel:%s Text: OverrideUsername: IconEmoji: Blocks:%s}", "#test-channel", blockKitJSON)
 	if !strings.Contains(stderr, expectedLog) {
 		t.Errorf("Expected stderr to contain '%s', got: '%s'", expectedLog, stderr)
 	}
@@ -240,7 +240,7 @@ func TestPost_BlockKitFormat_FromFile(t *testing.T) {
 		t.Fatalf("testExecuteCommandAndCapture returned an error: %v\nStderr: %s", err, stderr)
 	}
 
-	expectedLog := fmt.Sprintf("PostMessage called with opts: {Text: OverrideUsername: IconEmoji: Blocks:%s}", blockKitJSON)
+	expectedLog := fmt.Sprintf("PostMessage called with opts: {TargetChannel:%s Text: OverrideUsername: IconEmoji: Blocks:%s}", "#test-channel", blockKitJSON)
 	if !strings.Contains(stderr, expectedLog) {
 		t.Errorf("Expected stderr to contain '%s', got: '%s'", expectedLog, stderr)
 	}
@@ -268,7 +268,7 @@ func TestPost_BlockKitFormat_FromStdin(t *testing.T) {
 		t.Fatalf("testExecuteCommandAndCapture returned an error: %v\nStderr: %s", err, stderr)
 	}
 
-	expectedLog := fmt.Sprintf("PostMessage called with opts: {Text: OverrideUsername: IconEmoji: Blocks:%s}", blockKitJSON)
+	expectedLog := fmt.Sprintf("PostMessage called with opts: {TargetChannel:%s Text: OverrideUsername: IconEmoji: Blocks:%s}", "#test-channel", blockKitJSON)
 	if !strings.Contains(stderr, expectedLog) {
 		t.Errorf("Expected stderr to contain '%s', got: '%s'", expectedLog, stderr)
 	}

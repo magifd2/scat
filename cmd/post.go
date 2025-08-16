@@ -53,12 +53,7 @@ func newPostCmd() *cobra.Command {
 			channel, _ := cmd.Flags().GetString("channel")
 			tee, _ := cmd.Flags().GetBool("tee")
 			fromFile, _ := cmd.Flags().GetString("from-file")
-			format, _ := cmd.Flags().GetString("format") // New: Get format flag
-
-			// Override channel from profile if flag is set
-			if channel != "" {
-				profile.Channel = channel
-			}
+			format, _ := cmd.Flags().GetString("format")
 
 			// Get provider instance
 			prov, err := GetProvider(appCtx, profile)
@@ -80,12 +75,12 @@ func newPostCmd() *cobra.Command {
 			}
 
 			if stream {
-				return handleStream(prov, profileName, username, iconEmoji, tee, appCtx.Silent)
+				return handleStream(prov, channel, profileName, username, iconEmoji, tee, appCtx.Silent)
 			}
 
 			// --- Determine message content and format ---
 			var content string
-			var blocks json.RawMessage // Changed: Use json.RawMessage
+			var blocks json.RawMessage
 
 			// Read content from args, file, or stdin
 			if len(args) > 0 {
@@ -145,10 +140,11 @@ func newPostCmd() *cobra.Command {
 
 			// Post the message
 			opts := provider.PostMessageOptions{
+				TargetChannel:    channel,
 				Text:             content,
 				OverrideUsername: username,
 				IconEmoji:        iconEmoji,
-				Blocks:           blocks, // Set blocks
+				Blocks:           blocks,
 			}
 			// If blocks are present, clear text to ensure blocks are prioritized by provider
 			if len(opts.Blocks) > 0 {
@@ -178,12 +174,12 @@ func newPostCmd() *cobra.Command {
 	cmd.Flags().BoolP("tee", "t", false, "Print stdin to screen before posting")
 	cmd.Flags().StringP("username", "u", "", "Override the username for this post")
 	cmd.Flags().StringP("iconemoji", "i", "", "Icon emoji to use for the post (slack provider only)")
-	cmd.Flags().String("format", "text", "Message format (text or blocks)") // Add format flag
+	cmd.Flags().String("format", "text", "Message format (text or blocks)")
 
 	return cmd
 }
 
-func handleStream(prov provider.Interface, profileName, overrideUsername, iconEmoji string, tee bool, silent bool) error {
+func handleStream(prov provider.Interface, channel, profileName, overrideUsername, iconEmoji string, tee bool, silent bool) error {
 	if !silent {
 		fmt.Fprintf(os.Stderr, "Starting stream to profile '%s'. Press Ctrl+C to exit.\n", profileName)
 	}
@@ -212,6 +208,7 @@ func handleStream(prov provider.Interface, profileName, overrideUsername, iconEm
 				if len(buffer) > 0 {
 					fmt.Fprintf(os.Stderr, "Flushing %d remaining lines...\n", len(buffer))
 					opts := provider.PostMessageOptions{
+						TargetChannel:    channel,
 						Text:             strings.Join(buffer, "\n"),
 						OverrideUsername: overrideUsername,
 						IconEmoji:        iconEmoji,
@@ -229,6 +226,7 @@ func handleStream(prov provider.Interface, profileName, overrideUsername, iconEm
 		case <-ticker.C:
 			if len(buffer) > 0 {
 				opts := provider.PostMessageOptions{
+					TargetChannel:    channel,
 					Text:             strings.Join(buffer, "\n"),
 					OverrideUsername: overrideUsername,
 					IconEmoji:        iconEmoji,

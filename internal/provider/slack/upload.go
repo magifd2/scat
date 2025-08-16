@@ -70,7 +70,17 @@ func (p *Provider) PostFile(opts provider.PostFileOptions) error {
 	}
 
 	// Step 3: Complete the upload
-	channelID, err := p.ResolveChannelID(p.Profile.Channel)
+	// Determine the target channel. Priority: Options -> Profile default.
+	targetChannelName := p.Profile.Channel
+	if opts.TargetChannel != "" {
+		targetChannelName = opts.TargetChannel
+	}
+
+	if targetChannelName == "" {
+		return fmt.Errorf("no channel specified; please set a default channel in the profile or use the --channel flag")
+	}
+
+	channelID, err := p.ResolveChannelID(targetChannelName)
 	if err != nil {
 		return err
 	}
@@ -90,13 +100,13 @@ func (p *Provider) PostFile(opts provider.PostFileOptions) error {
 		// Check if the error is 'not_in_channel' and retry if so.
 		if strings.Contains(err.Error(), "not_in_channel") {
 			if !p.Context.Silent {
-				fmt.Fprintf(os.Stderr, "Bot not in channel '%s'. Attempting to join...\n", p.Profile.Channel)
+				fmt.Fprintf(os.Stderr, "Bot not in channel '%s'. Attempting to join...\n", targetChannelName)
 			}
 			if joinErr := p.joinChannel(channelID); joinErr != nil {
-				return fmt.Errorf("failed to join channel '%s': %w", p.Profile.Channel, joinErr)
+				return fmt.Errorf("failed to join channel '%s': %w", targetChannelName, joinErr)
 			}
 			if !p.Context.Silent {
-				fmt.Fprintf(os.Stderr, "Successfully joined channel '%s'. Retrying file upload completion...\n", p.Profile.Channel)
+				fmt.Fprintf(os.Stderr, "Successfully joined channel '%s'. Retrying file upload completion...\n", targetChannelName)
 			}
 			// Retry completing the upload after joining.
 			_, retryErr := p.sendRequest("POST", completeUploadExternalURL, bytes.NewBuffer(completePayloadBytes), "application/json; charset=utf-8")

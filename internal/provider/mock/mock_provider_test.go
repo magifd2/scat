@@ -63,7 +63,8 @@ func TestCapabilities(t *testing.T) {
 
 func TestPostMessage(t *testing.T) {
 	ctx := appcontext.NewContext(false, false, false, "")
-	p, _ := NewProvider(config.Profile{}, ctx)
+	profile := config.Profile{Channel: "#mock-channel"}
+	p, _ := NewProvider(profile, ctx)
 
 	opts := provider.PostMessageOptions{Text: "hello world"}
 
@@ -80,11 +81,34 @@ func TestPostMessage(t *testing.T) {
 	if !strings.Contains(output, "Text: hello world") {
 		t.Errorf("Expected output to contain the message text, got: %s", output)
 	}
+	if !strings.Contains(output, "Channel: #mock-channel") {
+		t.Errorf("Expected output to contain the default channel, got: %s", output)
+	}
+}
+
+func TestPostMessage_WithTargetChannel(t *testing.T) {
+	ctx := appcontext.NewContext(false, false, false, "")
+	profile := config.Profile{Channel: "#default-channel"}
+	p, _ := NewProvider(profile, ctx)
+
+	opts := provider.PostMessageOptions{TargetChannel: "#override-channel", Text: "hello world"}
+
+	output := captureStderr(func() {
+		err := p.PostMessage(opts)
+		if err != nil {
+			t.Errorf("PostMessage() error = %v", err)
+		}
+	})
+
+	if !strings.Contains(output, "Channel: #override-channel") {
+		t.Errorf("Expected output to contain the override channel, got: %s", output)
+	}
 }
 
 func TestPostMessage_Silent(t *testing.T) {
 	ctx := appcontext.NewContext(false, false, true, "") // Silent = true
-	p, _ := NewProvider(config.Profile{}, ctx)
+	profile := config.Profile{Channel: "#mock-channel"}
+	p, _ := NewProvider(profile, ctx)
 
 	opts := provider.PostMessageOptions{Text: "hello world"}
 
@@ -102,7 +126,8 @@ func TestPostMessage_Silent(t *testing.T) {
 
 func TestPostMessage_Debug(t *testing.T) {
 	ctx := appcontext.NewContext(true, false, false, "") // Debug = true
-	p, _ := NewProvider(config.Profile{}, ctx)
+	profile := config.Profile{Channel: "#mock-channel"}
+	p, _ := NewProvider(profile, ctx)
 
 	opts := provider.PostMessageOptions{Text: "debug message"}
 
@@ -120,7 +145,8 @@ func TestPostMessage_Debug(t *testing.T) {
 
 func TestPostMessage_WithBlocks(t *testing.T) {
 	ctx := appcontext.NewContext(false, false, false, "")
-	p, _ := NewProvider(config.Profile{}, ctx)
+	profile := config.Profile{Channel: "#mock-channel"}
+	p, _ := NewProvider(profile, ctx)
 
 	blocksJSON := []byte(`[{"type": "section", "text": {"type": "mrkdwn", "text": "Hello, Block Kit!"}}]`)
 	opts := provider.PostMessageOptions{Blocks: blocksJSON}

@@ -15,7 +15,17 @@ func (p *Provider) PostMessage(opts provider.PostMessageOptions) error {
 		fmt.Fprintln(os.Stderr, "[DEBUG] PostMessage called with Debug mode ON.")
 	}
 
-	channelID, err := p.ResolveChannelID(p.Profile.Channel)
+	// Determine the target channel. Priority: Options -> Profile default.
+	targetChannelName := p.Profile.Channel
+	if opts.TargetChannel != "" {
+		targetChannelName = opts.TargetChannel
+	}
+
+	if targetChannelName == "" {
+		return fmt.Errorf("no channel specified; please set a default channel in the profile or use the --channel flag")
+	}
+
+	channelID, err := p.ResolveChannelID(targetChannelName)
 	if err != nil {
 		return err
 	}
@@ -24,6 +34,7 @@ func (p *Provider) PostMessage(opts provider.PostMessageOptions) error {
 	if opts.OverrideUsername != "" {
 		username = opts.OverrideUsername
 	}
+
 	payload := messagePayload{
 		Channel:   channelID,
 		Text:      opts.Text,
@@ -43,13 +54,13 @@ func (p *Provider) PostMessage(opts provider.PostMessageOptions) error {
 		// Check if the error is 'not_in_channel'
 		if strings.Contains(err.Error(), "not_in_channel") {
 			if !p.Context.Silent {
-				fmt.Fprintf(os.Stderr, "Bot not in channel \"%s\". Attempting to join...\n", p.Profile.Channel)
+				fmt.Fprintf(os.Stderr, "Bot not in channel \"%s\". Attempting to join...\n", targetChannelName)
 			}
 			if joinErr := p.joinChannel(channelID); joinErr != nil {
-				return fmt.Errorf("failed to join channel \"%s\": %w", p.Profile.Channel, joinErr)
+				return fmt.Errorf("failed to join channel \"%s\": %w", targetChannelName, joinErr)
 			}
 			if !p.Context.Silent {
-				fmt.Fprintf(os.Stderr, "Successfully joined channel \"%s\". Retrying post...\n", p.Profile.Channel)
+				fmt.Fprintf(os.Stderr, "Successfully joined channel \"%s\". Retrying post...\n", targetChannelName)
 			}
 			// Retry post after joining
 			_, retryErr := p.sendRequest("POST", postMessageURL, bytes.NewBuffer(jsonPayload), "application/json; charset=utf-8")

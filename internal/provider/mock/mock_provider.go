@@ -35,8 +35,19 @@ func (p *Provider) Capabilities() provider.Capabilities {
 
 // PostMessage prints a mock message.
 func (p *Provider) PostMessage(opts provider.PostMessageOptions) error {
+	// Determine the target channel. Priority: Options -> Profile default.
+	targetChannelName := p.Profile.Channel
+	if opts.TargetChannel != "" {
+		targetChannelName = opts.TargetChannel
+	}
+
+	if targetChannelName == "" {
+		return fmt.Errorf("no channel specified; please set a default channel in the profile or use the --channel flag")
+	}
+
 	if !p.Context.Silent {
 		fmt.Fprintln(os.Stderr, "--- [MOCK] PostMessage called ---")
+		fmt.Fprintf(os.Stderr, "Channel: %s\n", targetChannelName)
 		if len(opts.Blocks) > 0 {
 			fmt.Fprintf(os.Stderr, "Blocks: %s\n", string(opts.Blocks))
 		} else {
@@ -44,19 +55,30 @@ func (p *Provider) PostMessage(opts provider.PostMessageOptions) error {
 		}
 	}
 	if p.Context.Debug {
-		fmt.Fprintf(os.Stderr, "[DEBUG] Mock PostMessage: Text=\"%s\", Username=\"%s\", IconEmoji=\"%s\", Blocks=\"%s\"\n", opts.Text, opts.OverrideUsername, opts.IconEmoji, string(opts.Blocks))
+		fmt.Fprintf(os.Stderr, "[DEBUG] Mock PostMessage: Channel=\"%s\", Text=\"%s\", Username=\"%s\", IconEmoji=\"%s\", Blocks=\"%s\"\n", targetChannelName, opts.Text, opts.OverrideUsername, opts.IconEmoji, string(opts.Blocks))
 	}
 	return nil
 }
 
 // PostFile prints a mock message.
 func (p *Provider) PostFile(opts provider.PostFileOptions) error {
+	// Determine the target channel. Priority: Options -> Profile default.
+	targetChannelName := p.Profile.Channel
+	if opts.TargetChannel != "" {
+		targetChannelName = opts.TargetChannel
+	}
+
+	if targetChannelName == "" {
+		return fmt.Errorf("no channel specified; please set a default channel in the profile or use the --channel flag")
+	}
+
 	if !p.Context.Silent {
 		fmt.Fprintln(os.Stderr, "--- [MOCK] PostFile called ---")
+		fmt.Fprintf(os.Stderr, "Channel: %s\n", targetChannelName)
 		fmt.Fprintf(os.Stderr, "File: %s\n", opts.FilePath)
 	}
 	if p.Context.Debug {
-		fmt.Fprintf(os.Stderr, "[DEBUG] Mock PostFile: FilePath=\"%s\", Filename=\"%s\"\n", opts.FilePath, opts.Filename)
+		fmt.Fprintf(os.Stderr, "[DEBUG] Mock PostFile: Channel=\"%s\", FilePath=\"%s\", Filename=\"%s\"\n", targetChannelName, opts.FilePath, opts.Filename)
 	}
 	return nil
 }
@@ -69,7 +91,7 @@ func (p *Provider) ListChannels() ([]string, error) {
 // ExportLog returns a dummy log for testing.
 func (p *Provider) ExportLog(opts export.Options) (*export.ExportedLog, error) {
 	if !p.Context.Silent {
-		fmt.Fprintf(os.Stderr, "--- [MOCK] ExportLog called for channel %s ---\n", opts.ChannelName)
+		fmt.Fprintf(os.Stderr, "--- [MOCK] ExportLog called for channel %s ---", opts.ChannelName)
 	}
 	return &export.ExportedLog{
 		ExportTimestamp: time.Now().UTC().Format(time.RFC3339),
