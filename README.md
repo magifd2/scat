@@ -29,7 +29,7 @@ Before you can start posting, you need to create a configuration file.
 
 1.  **Initialize the config file**:
 
-        Run the following command to create a configuration file (`~/.config/scat/config.json`) in the default location:
+    Run the following command to create a configuration file (`~/.config/scat/config.json`) in the default location:
 
     ```bash
     scat config init
