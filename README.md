@@ -29,11 +29,14 @@ Before you can start posting, you need to create a configuration file.
 
 1.  **Initialize the config file**:
 
-    Run the following command to create a default configuration file at `~/.config/scat/config.json`:
+        Run the following command to create a configuration file (`~/.config/scat/config.json`) in the default location:
 
     ```bash
     scat config init
     ```
+
+    **Important**: This configuration file contains sensitive information such as Slack tokens. For security, it is highly recommended to set the file permissions to `600` (read and write only for the owner).
+
 
 2.  **Configure a Profile**:
 
