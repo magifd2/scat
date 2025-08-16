@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.0] - 2025-08-16
+
+### Features
+
+- **Direct Message Support**: Added the ability to send direct messages (DMs) via the `post` and `upload` commands using a new `--user` flag.
+- **User Resolution**: The `--user` flag can accept both user IDs (e.g., `U123ABCDE`) and mention names (e.g., `@username`). The provider will automatically resolve mention names to user IDs.
+
+### Refactoring
+
+- **Channel Specification**: Refactored the channel specification logic for the `post` and `upload` commands to be more explicit and robust, passing the target channel in `PostOptions` rather than mutating the profile.
+
  ## [1.7.0] - 2025-08-15
 
  ### Features
