@@ -35,19 +35,22 @@ func (p *Provider) Capabilities() provider.Capabilities {
 
 // PostMessage prints a mock message.
 func (p *Provider) PostMessage(opts provider.PostMessageOptions) error {
-	// Determine the target channel. Priority: Options -> Profile default.
-	targetChannelName := p.Profile.Channel
-	if opts.TargetChannel != "" {
-		targetChannelName = opts.TargetChannel
-	}
-
-	if targetChannelName == "" {
-		return fmt.Errorf("no channel specified; please set a default channel in the profile or use the --channel flag")
+	var destination string
+	switch {
+	case opts.TargetUserID != "":
+		destination = fmt.Sprintf("User: %s", opts.TargetUserID)
+	case opts.TargetChannel != "":
+		destination = fmt.Sprintf("Channel: %s", opts.TargetChannel)
+	default:
+		if p.Profile.Channel == "" {
+			return fmt.Errorf("no channel or user specified; please set a default channel in the profile or use the --channel or --user flag")
+		}
+		destination = fmt.Sprintf("Channel: %s (default)", p.Profile.Channel)
 	}
 
 	if !p.Context.Silent {
 		fmt.Fprintln(os.Stderr, "--- [MOCK] PostMessage called ---")
-		fmt.Fprintf(os.Stderr, "Channel: %s\n", targetChannelName)
+		fmt.Fprintln(os.Stderr, destination)
 		if len(opts.Blocks) > 0 {
 			fmt.Fprintf(os.Stderr, "Blocks: %s\n", string(opts.Blocks))
 		} else {
@@ -55,30 +58,33 @@ func (p *Provider) PostMessage(opts provider.PostMessageOptions) error {
 		}
 	}
 	if p.Context.Debug {
-		fmt.Fprintf(os.Stderr, "[DEBUG] Mock PostMessage: Channel=\"%s\", Text=\"%s\", Username=\"%s\", IconEmoji=\"%s\", Blocks=\"%s\"\n", targetChannelName, opts.Text, opts.OverrideUsername, opts.IconEmoji, string(opts.Blocks))
+		fmt.Fprintf(os.Stderr, "[DEBUG] Mock PostMessage: Destination=\"%s\", Text=\"%s\", Username=\"%s\", IconEmoji=\"%s\", Blocks=\"%s\"\n", destination, opts.Text, opts.OverrideUsername, opts.IconEmoji, string(opts.Blocks))
 	}
 	return nil
 }
 
 // PostFile prints a mock message.
 func (p *Provider) PostFile(opts provider.PostFileOptions) error {
-	// Determine the target channel. Priority: Options -> Profile default.
-	targetChannelName := p.Profile.Channel
-	if opts.TargetChannel != "" {
-		targetChannelName = opts.TargetChannel
-	}
-
-	if targetChannelName == "" {
-		return fmt.Errorf("no channel specified; please set a default channel in the profile or use the --channel flag")
+	var destination string
+	switch {
+	case opts.TargetUserID != "":
+		destination = fmt.Sprintf("User: %s", opts.TargetUserID)
+	case opts.TargetChannel != "":
+		destination = fmt.Sprintf("Channel: %s", opts.TargetChannel)
+	default:
+		if p.Profile.Channel == "" {
+			return fmt.Errorf("no channel or user specified; please set a default channel in the profile or use the --channel or --user flag")
+		}
+		destination = fmt.Sprintf("Channel: %s (default)", p.Profile.Channel)
 	}
 
 	if !p.Context.Silent {
 		fmt.Fprintln(os.Stderr, "--- [MOCK] PostFile called ---")
-		fmt.Fprintf(os.Stderr, "Channel: %s\n", targetChannelName)
+		fmt.Fprintln(os.Stderr, destination)
 		fmt.Fprintf(os.Stderr, "File: %s\n", opts.FilePath)
 	}
 	if p.Context.Debug {
-		fmt.Fprintf(os.Stderr, "[DEBUG] Mock PostFile: Channel=\"%s\", FilePath=\"%s\", Filename=\"%s\"\n", targetChannelName, opts.FilePath, opts.Filename)
+		fmt.Fprintf(os.Stderr, "[DEBUG] Mock PostFile: Destination=\"%s\", FilePath=\"%s\", Filename=\"%s\"\n", destination, opts.FilePath, opts.Filename)
 	}
 	return nil
 }

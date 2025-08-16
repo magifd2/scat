@@ -10,7 +10,13 @@ type PostMessageOptions struct {
 	// TargetChannel specifies the destination channel name or ID.
 	// If provided, this overrides the default channel configured in the provider's profile.
 	// If left empty, the provider's default channel is used as a fallback.
+	// This field is mutually exclusive with TargetUserID.
 	TargetChannel string
+
+	// TargetUserID specifies the destination user ID for a direct message.
+	// If provided, the provider should open a DM channel with this user.
+	// This field is mutually exclusive with TargetChannel.
+	TargetUserID string
 
 	Text             string
 	OverrideUsername string
@@ -23,7 +29,13 @@ type PostFileOptions struct {
 	// TargetChannel specifies the destination channel name or ID.
 	// If provided, this overrides the default channel configured in the provider's profile.
 	// If left empty, the provider's default channel is used as a fallback.
+	// This field is mutually exclusive with TargetUserID.
 	TargetChannel string
+
+	// TargetUserID specifies the destination user ID for a direct message.
+	// If provided, the provider should open a DM channel with this user.
+	// This field is mutually exclusive with TargetChannel.
+	TargetUserID string
 
 	FilePath         string
 	Filename         string

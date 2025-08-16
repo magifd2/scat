@@ -7,6 +7,7 @@
 ## Features
 
 - **Post text messages**: Send content from arguments, files, or stdin.
+- **Send Direct Messages (DMs)**: Send messages or files directly to users by their ID or mention name.
 - **Upload files**: Upload files from a path or stdin.
 - **Stream content**: Continuously stream from stdin, posting messages periodically.
 - **Export channel logs**: Export message history from a channel to a structured JSON file or stdout.
@@ -65,11 +66,17 @@ Here are some common ways to use `scat`.
 
 ### Posting Text Messages (`post`)
 
--   **From an argument**:
-    `scat post "Hello from the command line!"`
+-   **From an argument to a channel**:
+    `scat post --channel "#random" "Hello from the command line!"`
 
--   **From standard input (pipe)**:
+-   **From standard input (pipe) to the default channel**:
     `echo "This message was piped." | scat post`
+
+-   **As a Direct Message to a user (by mention name)**:
+    `scat post --user @someuser "Hello, this is a direct message."`
+
+-   **As a Direct Message to a user (by user ID)**:
+    `scat post --user U123ABCDE "You can also use a user ID for DMs."`
 
 ### Posting Block Kit Messages (`post` with `--format blocks`)
 
@@ -85,11 +92,11 @@ Here are some common ways to use `scat`.
 
 ### Uploading Files (`upload`)
 
--   **Upload a file from a path**:
-    `scat upload --file ./report.pdf`
+-   **Upload a file to a channel**:
+    `scat upload --file ./report.pdf --channel "#reports"`
 
--   **Upload with a comment**:
-    `scat upload --file ./screenshot.png -m "Here is the screenshot you requested."`
+-   **Upload a file as a DM to a user with a comment**:
+    `scat upload --file ./screenshot.png --user @someuser -m "Here is the screenshot you requested."`
 
 ### Exporting Channel Logs (`export log`)
 
@@ -134,7 +141,8 @@ Exports message history from a channel to a structured JSON file or stdout. For 
 
 | Flag          | Shorthand | Description                               |
 | ------------- | --------- | ----------------------------------------- |
-| `--channel`   | `-c`      | Override the destination channel (ID or name) for this post. |
+| `--channel`   | `-c`      | Override destination channel (cannot be used with `--user`). |
+| `--user`      |           | Send a direct message to a user by ID or mention name. |
 | `--from-file` |           | Read message body from a file.            |
 | `--stream`    | `-s`      | Stream messages from stdin continuously.  |
 | `--tee`       | `-t`      | Print stdin to screen while posting.      |
@@ -146,7 +154,8 @@ Exports message history from a channel to a structured JSON file or stdout. For 
 
 | Flag        | Shorthand | Description                                      |
 | ----------- | --------- | ------------------------------------------------ |
-| `--channel` | `-c`      | Override the destination channel (ID or name) for this upload. |
+| `--channel` | `-c`      | Override destination channel (cannot be used with `--user`). |
+| `--user`    |           | Send a direct message to a user by ID or mention name. |
 | `--file`    | `-f`      | **Required.** Path to the file, or `-` for stdin. |
 | `--filename`| `-n`      | Filename for the upload.                         |
 | `--filetype`|           | Filetype for syntax highlighting (e.g., `go`).   |

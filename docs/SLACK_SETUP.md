@@ -51,6 +51,10 @@ Once you are on the app's management screen, you need to add the permissions tha
     *   `files:write`: Required to upload files.
     *   `channels:join`: Required for the bot to automatically join public channels before posting.
 
+    **DM & User Scopes (for Direct Messages and user info):**
+    *   `im:write`: Required to open a direct message channel with a user.
+    *   `users.read`: Required to find a user by their @mention name (for DMs) and to resolve user IDs to names (for log exports).
+
     **Optional Scopes (for extra features):**
     *   `channels:read`: Required for the `channel list` command.
     *   `groups:read`: Required for the `channel list` command to see private channels.
@@ -59,7 +63,6 @@ Once you are on the app's management screen, you need to add the permissions tha
     **Export Scopes (for `export log` command):**
     *   `channels:history`: Required to read message history from public channels.
     *   `groups:history`: Required to read message history from private channels.
-    *   `users:read`: Required to resolve user IDs to user names.
     *   `files:read`: Required to download attached files.
 
 ### Step 3: Install the App to Your Workspace

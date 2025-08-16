@@ -70,19 +70,42 @@ func (p *Provider) PostFile(opts provider.PostFileOptions) error {
 	}
 
 	// Step 3: Complete the upload
-	// Determine the target channel. Priority: Options -> Profile default.
-	targetChannelName := p.Profile.Channel
-	if opts.TargetChannel != "" {
-		targetChannelName = opts.TargetChannel
-	}
+	var channelID, destinationName string
 
-	if targetChannelName == "" {
-		return fmt.Errorf("no channel specified; please set a default channel in the profile or use the --channel flag")
-	}
+	switch {
+	case opts.TargetUserID != "":
+		destinationName = opts.TargetUserID
+		var userID string
+		// Check if the provided user string is a user ID or a mention name
+		if strings.HasPrefix(opts.TargetUserID, "U") || strings.HasPrefix(opts.TargetUserID, "W") {
+			userID = opts.TargetUserID
+		} else {
+			userID, err = p.ResolveUserID(opts.TargetUserID)
+			if err != nil {
+				return err
+			}
+		}
+		channelID, err = p.openDMChannel(userID)
+		if err != nil {
+			return fmt.Errorf("failed to open DM channel with user %s: %w", opts.TargetUserID, err)
+		}
 
-	channelID, err := p.ResolveChannelID(targetChannelName)
-	if err != nil {
-		return err
+	case opts.TargetChannel != "":
+		destinationName = opts.TargetChannel
+		channelID, err = p.ResolveChannelID(opts.TargetChannel)
+		if err != nil {
+			return err
+		}
+
+	default:
+		destinationName = p.Profile.Channel
+		if destinationName == "" {
+			return fmt.Errorf("no channel or user specified; please set a default channel in the profile or use the --channel or --user flag")
+		}
+		channelID, err = p.ResolveChannelID(p.Profile.Channel)
+		if err != nil {
+			return err
+		}
 	}
 
 	completePayload := completeUploadExternalPayload{
@@ -98,15 +121,15 @@ func (p *Provider) PostFile(opts provider.PostFileOptions) error {
 	_, err = p.sendRequest("POST", completeUploadExternalURL, bytes.NewBuffer(completePayloadBytes), "application/json; charset=utf-8")
 	if err != nil {
 		// Check if the error is 'not_in_channel' and retry if so.
-		if strings.Contains(err.Error(), "not_in_channel") {
+		if opts.TargetUserID == "" && strings.Contains(err.Error(), "not_in_channel") {
 			if !p.Context.Silent {
-				fmt.Fprintf(os.Stderr, "Bot not in channel '%s'. Attempting to join...\n", targetChannelName)
+				fmt.Fprintf(os.Stderr, "Bot not in channel '%s'. Attempting to join...\n", destinationName)
 			}
 			if joinErr := p.joinChannel(channelID); joinErr != nil {
-				return fmt.Errorf("failed to join channel '%s': %w", targetChannelName, joinErr)
+				return fmt.Errorf("failed to join channel '%s': %w", destinationName, joinErr)
 			}
 			if !p.Context.Silent {
-				fmt.Fprintf(os.Stderr, "Successfully joined channel '%s'. Retrying file upload completion...\n", targetChannelName)
+				fmt.Fprintf(os.Stderr, "Successfully joined channel '%s'. Retrying file upload completion...\n", destinationName)
 			}
 			// Retry completing the upload after joining.
 			_, retryErr := p.sendRequest("POST", completeUploadExternalURL, bytes.NewBuffer(completePayloadBytes), "application/json; charset=utf-8")

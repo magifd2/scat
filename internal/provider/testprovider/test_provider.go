@@ -49,31 +49,18 @@ func (p *Provider) PostMessage(opts provider.PostMessageOptions) error {
 		return nil
 	}
 
-	// Determine the target channel. Priority: Options -> Profile default.
-	targetChannelName := p.Profile.Channel
-	if opts.TargetChannel != "" {
-		targetChannelName = opts.TargetChannel
-	}
-
-	// Note: No error for empty channel in test provider, to allow testing that case.
-
-	fmt.Fprintf(os.Stderr, "[TESTPROVIDER] PostMessage called with opts: {TargetChannel:%s Text:%s OverrideUsername:%s IconEmoji:%s Blocks:%s}\n", targetChannelName, opts.Text, opts.OverrideUsername, opts.IconEmoji, string(opts.Blocks))
+	// Note: No complex logic for channel/user resolution in test provider.
+	// We just log the raw options to verify that the command layer is sending them correctly.
+	fmt.Fprintf(os.Stderr, "[TESTPROVIDER] PostMessage called with opts: {TargetChannel:%s TargetUserID:%s Text:%s OverrideUsername:%s IconEmoji:%s Blocks:%s}\n", opts.TargetChannel, opts.TargetUserID, opts.Text, opts.OverrideUsername, opts.IconEmoji, string(opts.Blocks))
 	return nil
 }
 
 // PostFile logs the file options to stderr.
 func (p *Provider) PostFile(opts provider.PostFileOptions) error {
-	// Determine the target channel. Priority: Options -> Profile default.
-	targetChannelName := p.Profile.Channel
-	if opts.TargetChannel != "" {
-		targetChannelName = opts.TargetChannel
-	}
-
-	// Note: No error for empty channel in test provider.
-
-	// Create a temporary struct for logging that includes the resolved channel.
+	// Create a temporary struct for logging that includes all relevant fields.
 	logOpts := struct {
 		TargetChannel    string
+		TargetUserID     string
 		FilePath         string
 		Filename         string
 		Filetype         string
@@ -81,7 +68,8 @@ func (p *Provider) PostFile(opts provider.PostFileOptions) error {
 		OverrideUsername string
 		IconEmoji        string
 	}{
-		TargetChannel:    targetChannelName,
+		TargetChannel:    opts.TargetChannel,
+		TargetUserID:     opts.TargetUserID,
 		FilePath:         opts.FilePath,
 		Filename:         opts.Filename,
 		Filetype:         opts.Filetype,

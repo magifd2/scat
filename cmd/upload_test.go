@@ -29,7 +29,7 @@ func TestUpload_FromFile(t *testing.T) {
 	}
 
 	// Check if the test provider's PostFile was called with the correct options
-	expectedLog := fmt.Sprintf("PostFile called with opts: {TargetChannel:%s FilePath:%s Filename:%s Filetype: Comment: OverrideUsername: IconEmoji:}", "#test-channel", filePath, filePath)
+	expectedLog := fmt.Sprintf("PostFile called with opts: {TargetChannel: TargetUserID: FilePath:%s Filename:%s Filetype: Comment: OverrideUsername: IconEmoji:}", filePath, filePath)
 	if !strings.Contains(stderr, expectedLog) {
 		t.Errorf("Expected stderr to contain '%s', got: '%s'", expectedLog, stderr)
 	}
@@ -61,7 +61,7 @@ func TestUpload_FromStdin(t *testing.T) {
 
 	// Check if the test provider's PostFile was called with the correct options
 	// Note: The exact temp file path is unknown, so we check for the known parts.
-	if !strings.Contains(stderr, "PostFile called with opts: {TargetChannel:#test-channel FilePath:") {
+	if !strings.Contains(stderr, "PostFile called with opts: {TargetChannel: TargetUserID: FilePath:") {
 		t.Errorf("Expected stderr to contain PostFile marker, got: %s", stderr)
 	}
 	if !strings.Contains(stderr, "Filename:stdin-upload Filetype: Comment: OverrideUsername: IconEmoji:}") {
@@ -94,9 +94,63 @@ func TestUpload_WithOptions(t *testing.T) {
 	}
 
 	// Check if the test provider's PostFile was called with the correct options
-	expectedLog := fmt.Sprintf("PostFile called with opts: {TargetChannel:%s FilePath:%s Filename:%s Filetype:%s Comment:%s OverrideUsername: IconEmoji:}", channel, filePath, filename, filetype, comment)
+	expectedLog := fmt.Sprintf("PostFile called with opts: {TargetChannel:%s TargetUserID:%s FilePath:%s Filename:%s Filetype:%s Comment:%s OverrideUsername: IconEmoji:}", channel, "", filePath, filename, filetype, comment)
 	if !strings.Contains(stderr, expectedLog) {
 		t.Errorf("Expected stderr to contain '%s', got: '%s'", expectedLog, stderr)
+	}
+}
+
+func TestUpload_ToUser(t *testing.T) {
+	configPath, cleanup := setupTest(t)
+	defer cleanup()
+
+	// Create a dummy file to upload
+	tempDir := t.TempDir()
+	filePath := filepath.Join(tempDir, "upload-user.txt")
+	if err := os.WriteFile(filePath, []byte("hello user"), 0666); err != nil {
+		t.Fatal(err)
+	}
+
+	rootCmd := newRootCmd()
+	rootCmd.AddCommand(newUploadCmd())
+
+	// Execute the command
+	user := "U123ABCDE"
+	_, stderr, err := testExecuteCommandAndCapture(rootCmd, "--config", configPath, "upload", "--file", filePath, "--user", user)
+	if err != nil {
+		t.Fatalf("testExecuteCommandAndCapture returned an error: %v\nStderr: %s", err, stderr)
+	}
+
+	// Check if the test provider's PostFile was called with the correct options
+	expectedLog := fmt.Sprintf("PostFile called with opts: {TargetChannel: TargetUserID:%s FilePath:%s Filename:%s Filetype: Comment: OverrideUsername: IconEmoji:}", user, filePath, filePath)
+	if !strings.Contains(stderr, expectedLog) {
+		t.Errorf("Expected stderr to contain '%s', got: '%s'", expectedLog, stderr)
+	}
+}
+
+func TestUpload_UserAndChannelError(t *testing.T) {
+	configPath, cleanup := setupTest(t)
+	defer cleanup()
+
+	// Create a dummy file to upload
+	tempDir := t.TempDir()
+	filePath := filepath.Join(tempDir, "upload-error.txt")
+	if err := os.WriteFile(filePath, []byte("hello error"), 0666); err != nil {
+		t.Fatal(err)
+	}
+
+	rootCmd := newRootCmd()
+	rootCmd.AddCommand(newUploadCmd())
+
+	// Execute the command with both --user and --channel
+	_, _, err := testExecuteCommandAndCapture(rootCmd, "--config", configPath, "upload", "--file", filePath, "--user", "U123ABCDE", "--channel", "#test")
+	if err == nil {
+		t.Fatal("Expected an error, but got nil")
+	}
+
+	expectedError := "cannot use --user and --channel flags simultaneously"
+	if !strings.Contains(err.Error(), expectedError) {
+		t.Errorf("Expected error to contain '%s', got: '%s'", expectedError, err.Error())
 	}
 }
 

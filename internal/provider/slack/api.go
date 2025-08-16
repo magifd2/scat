@@ -20,8 +20,107 @@ const (
 	conversationsListURL      = "https://slack.com/api/conversations.list"
 	conversationsJoinURL      = "https://slack.com/api/conversations.join"
 	conversationsHistoryURL   = "https://slack.com/api/conversations.history"
+	conversationsOpenURL      = "https://slack.com/api/conversations.open"
+	usersListURL              = "https://slack.com/api/users.list"
 	usersInfoURL              = "https://slack.com/api/users.info"
 )
+
+// conversationsOpenResponse defines the structure for the conversations.open API response.
+type conversationsOpenResponse struct {
+	Ok      bool   `json:"ok"`
+	Error   string `json:"error"`
+	Channel struct {
+		ID string `json:"id"`
+	} `json:"channel"`
+}
+
+// usersListResponse defines the structure for the users.list API response.
+type usersListResponse struct {
+	Ok      bool   `json:"ok"`
+	Error   string `json:"error"`
+	Members []struct {
+		ID      string `json:"id"`
+		Name    string `json:"name"`
+		IsBot   bool   `json:"is_bot"`
+		Deleted bool   `json:"deleted"`
+		Profile struct {
+			DisplayName string `json:"display_name"`
+		} `json:"profile"`
+	} `json:"members"`
+	ResponseMetadata struct {
+		NextCursor string `json:"next_cursor"`
+	} `json:"response_metadata"`
+}
+
+// openDMChannel opens a direct message channel with a user and returns the channel ID.
+func (p *Provider) openDMChannel(userID string) (string, error) {
+	payload := map[string]string{"users": userID}
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal conversations.open payload: %w", err)
+	}
+
+	respBody, err := p.sendRequest("POST", conversationsOpenURL, bytes.NewBuffer(jsonPayload), "application/json; charset=utf-8")
+	if err != nil {
+		return "", err
+	}
+
+	var openResp conversationsOpenResponse
+	if err := json.Unmarshal(respBody, &openResp); err != nil {
+		return "", fmt.Errorf("failed to unmarshal conversations.open response: %w", err)
+	}
+
+	if !openResp.Ok {
+		return "", fmt.Errorf("slack API error on conversations.open: %s", openResp.Error)
+	}
+	if openResp.Channel.ID == "" {
+		return "", fmt.Errorf("conversations.open did not return a channel ID")
+	}
+
+	return openResp.Channel.ID, nil
+}
+
+// getUsers fetches all non-bot, non-deleted users from the workspace.
+func (p *Provider) getUsers() ([]struct{ ID, Name string }, error) {
+	if p.Context.Debug {
+		fmt.Fprintf(os.Stderr, "[DEBUG] Fetching users by calling users.list...\n")
+	}
+	var allUsers []struct{ ID, Name string }
+	cursor := ""
+
+	for {
+		url := fmt.Sprintf("%s?cursor=%s&limit=200", usersListURL, cursor)
+		body, err := p.sendRequest("GET", url, nil, "")
+		if err != nil {
+			return nil, err
+		}
+
+		var listResp usersListResponse
+		if err := json.Unmarshal(body, &listResp); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal users.list response: %w", err)
+		}
+
+		if !listResp.Ok {
+			return nil, fmt.Errorf("slack API error on users.list: %s", listResp.Error)
+		}
+
+		for _, user := range listResp.Members {
+			if !user.IsBot && !user.Deleted {
+				name := user.Profile.DisplayName
+				if name == "" {
+					name = user.Name
+				}
+				allUsers = append(allUsers, struct{ ID, Name string }{ID: user.ID, Name: name})
+			}
+		}
+
+		cursor = listResp.ResponseMetadata.NextCursor
+		if cursor == "" {
+			break
+		}
+	}
+	return allUsers, nil
+}
 
 func (p *Provider) getConversationHistory(channelID string, opts export.Options, cursor string) (*conversationsHistoryResponse, error) {
 	params := url.Values{}
@@ -95,6 +194,53 @@ func (p *Provider) populateChannelCache() error {
 		}
 	}
 	return nil
+}
+
+// populateUserCache fetches all users and populates the userIDCache.
+func (p *Provider) populateUserCache() error {
+	users, err := p.getUsers()
+	if err != nil {
+		return fmt.Errorf("failed to get users for cache: %w", err)
+	}
+
+	p.userIDCache = make(map[string]string)
+	for _, user := range users {
+		p.userIDCache[user.Name] = user.ID
+		if p.Context.Debug {
+			fmt.Fprintf(os.Stderr, "[DEBUG] Caching user: Name=%s, ID=%s\n", user.Name, user.ID)
+		}
+	}
+
+	if p.Context.Debug {
+		fmt.Fprintf(os.Stderr, "[DEBUG] User cache populated with %d users.\n", len(p.userIDCache))
+	}
+	return nil
+}
+
+// ResolveUserID finds a user ID for a given user name.
+// It checks the cache first, and repopulates it if the user is not found.
+func (p *Provider) ResolveUserID(userName string) (string, error) {
+	cleanUserName := strings.TrimPrefix(userName, "@")
+
+	id, ok := p.userIDCache[cleanUserName]
+	if ok {
+		return id, nil
+	}
+
+	// If not found, refresh the cache and try again.
+	if p.Context.Debug {
+		fmt.Fprintf(os.Stderr, "[DEBUG] User '%s' not found in cache, repopulating...\n", cleanUserName)
+	}
+	if err := p.populateUserCache(); err != nil {
+		return "", fmt.Errorf("failed to repopulate user cache: %w", err)
+	}
+
+	id, ok = p.userIDCache[cleanUserName]
+	if !ok {
+		return "", fmt.Errorf("user '%s' not found", userName)
+	}
+
+	return id, nil
 }
 
 func (p *Provider) joinChannel(channelID string) error {

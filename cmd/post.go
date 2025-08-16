@@ -51,9 +51,15 @@ func newPostCmd() *cobra.Command {
 			username, _ := cmd.Flags().GetString("username")
 			iconEmoji, _ := cmd.Flags().GetString("iconemoji")
 			channel, _ := cmd.Flags().GetString("channel")
+			user, _ := cmd.Flags().GetString("user")
 			tee, _ := cmd.Flags().GetBool("tee")
 			fromFile, _ := cmd.Flags().GetString("from-file")
 			format, _ := cmd.Flags().GetString("format")
+
+			// --- Flag Validation and Exclusive Handling ---
+			if user != "" && channel != "" {
+				return fmt.Errorf("cannot use --user and --channel flags simultaneously")
+			}
 
 			// Get provider instance
 			prov, err := GetProvider(appCtx, profile)
@@ -61,7 +67,6 @@ func newPostCmd() *cobra.Command {
 				return err
 			}
 
-			// --- Flag Validation and Exclusive Handling ---
 			stream, _ := cmd.Flags().GetBool("stream")
 
 			// Validate format flag value
@@ -75,7 +80,7 @@ func newPostCmd() *cobra.Command {
 			}
 
 			if stream {
-				return handleStream(prov, channel, profileName, username, iconEmoji, tee, appCtx.Silent)
+				return handleStream(prov, channel, user, profileName, username, iconEmoji, tee, appCtx.Silent)
 			}
 
 			// --- Determine message content and format ---
@@ -141,6 +146,7 @@ func newPostCmd() *cobra.Command {
 			// Post the message
 			opts := provider.PostMessageOptions{
 				TargetChannel:    channel,
+				TargetUserID:     user,
 				Text:             content,
 				OverrideUsername: username,
 				IconEmoji:        iconEmoji,
@@ -169,6 +175,7 @@ func newPostCmd() *cobra.Command {
 
 	cmd.Flags().StringP("profile", "p", "", "Profile to use for this post")
 	cmd.Flags().StringP("channel", "c", "", "Override the destination channel for this post")
+	cmd.Flags().String("user", "", "Send a direct message to a user by ID")
 	cmd.Flags().String("from-file", "", "Read message body from a file")
 	cmd.Flags().BoolP("stream", "s", false, "Stream messages from stdin continuously")
 	cmd.Flags().BoolP("tee", "t", false, "Print stdin to screen before posting")
@@ -179,7 +186,7 @@ func newPostCmd() *cobra.Command {
 	return cmd
 }
 
-func handleStream(prov provider.Interface, channel, profileName, overrideUsername, iconEmoji string, tee bool, silent bool) error {
+func handleStream(prov provider.Interface, channel, user, profileName, overrideUsername, iconEmoji string, tee bool, silent bool) error {
 	if !silent {
 		fmt.Fprintf(os.Stderr, "Starting stream to profile '%s'. Press Ctrl+C to exit.\n", profileName)
 	}
@@ -209,6 +216,7 @@ func handleStream(prov provider.Interface, channel, profileName, overrideUsernam
 					fmt.Fprintf(os.Stderr, "Flushing %d remaining lines...\n", len(buffer))
 					opts := provider.PostMessageOptions{
 						TargetChannel:    channel,
+						TargetUserID:     user,
 						Text:             strings.Join(buffer, "\n"),
 						OverrideUsername: overrideUsername,
 						IconEmoji:        iconEmoji,
@@ -227,6 +235,7 @@ func handleStream(prov provider.Interface, channel, profileName, overrideUsernam
 			if len(buffer) > 0 {
 				opts := provider.PostMessageOptions{
 					TargetChannel:    channel,
+					TargetUserID:     user,
 					Text:             strings.Join(buffer, "\n"),
 					OverrideUsername: overrideUsername,
 					IconEmoji:        iconEmoji,

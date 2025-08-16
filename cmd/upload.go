@@ -45,11 +45,12 @@ func newUploadCmd() *cobra.Command {
 
 			// Get optional flags
 			channel, _ := cmd.Flags().GetString("channel")
+			user, _ := cmd.Flags().GetString("user")
 			filePath, _ := cmd.Flags().GetString("file")
 
-			// Override channel from profile if flag is set
-			if channel != "" {
-				profile.Channel = channel
+			// --- Flag Validation and Exclusive Handling ---
+			if user != "" && channel != "" {
+				return fmt.Errorf("cannot use --user and --channel flags simultaneously")
 			}
 
 			// Get provider instance
@@ -90,22 +91,24 @@ func newUploadCmd() *cobra.Command {
 			} else {
 				// Check file size before proceeding
 				fileInfo, err := os.Stat(filePath)
-				if err != nil {
-					return fmt.Errorf("failed to get file info: %w", err)
-				}
-				if profile.Limits.MaxFileSizeBytes > 0 && fileInfo.Size() > profile.Limits.MaxFileSizeBytes {
-					return fmt.Errorf("file size (%d bytes) exceeds the configured limit (%d bytes)", fileInfo.Size(), profile.Limits.MaxFileSizeBytes)
-				}
+					if err != nil {
+						return fmt.Errorf("failed to get file info: %w", err)
+					}
+					if profile.Limits.MaxFileSizeBytes > 0 && fileInfo.Size() > profile.Limits.MaxFileSizeBytes {
+						return fmt.Errorf("file size (%d bytes) exceeds the configured limit (%d bytes)", fileInfo.Size(), profile.Limits.MaxFileSizeBytes)
+					}
 				if filename == "" {
 					filename = filePath
 				}
 			}
 
 			opts := provider.PostFileOptions{
-				FilePath: filePath,
-				Filename: filename,
-				Filetype: filetype,
-				Comment:  comment,
+				TargetChannel: channel,
+				TargetUserID:  user,
+				FilePath:      filePath,
+				Filename:      filename,
+				Filetype:      filetype,
+				Comment:       comment,
 			}
 			if err := prov.PostFile(opts); err != nil {
 				return fmt.Errorf("failed to post file: %w", err)
@@ -120,6 +123,7 @@ func newUploadCmd() *cobra.Command {
 
 	cmd.Flags().StringP("profile", "p", "", "Profile to use for this upload")
 	cmd.Flags().StringP("channel", "c", "", "Override the destination channel for this upload")
+	cmd.Flags().String("user", "", "Send a direct message to a user by ID")
 	cmd.Flags().StringP("file", "f", "", "Path to the file to upload, or \"-\" for stdin")
 	_ = cmd.MarkFlagRequired("file")
 

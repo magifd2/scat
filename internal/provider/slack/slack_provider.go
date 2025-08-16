@@ -16,6 +16,7 @@ type Provider struct {
 	Context        appcontext.Context
 	httpClient     *http.Client
 	channelIDCache map[string]string
+	userIDCache    map[string]string
 }
 
 // NewProvider creates a new Slack Provider.
@@ -25,14 +26,21 @@ func NewProvider(p config.Profile, ctx appcontext.Context) (provider.Interface, 
 		Context:        ctx,
 		httpClient:     &http.Client{},
 		channelIDCache: make(map[string]string),
+		userIDCache:    make(map[string]string),
 	}
 
-	// Best-effort attempt to populate the channel cache on initialization.
+	// Best-effort attempt to populate caches on initialization.
 	if err := prov.populateChannelCache(); err != nil {
 		if ctx.Debug {
 			fmt.Fprintf(os.Stderr, "[DEBUG] Failed to populate channel cache on init: %v\n", err)
 		}
 	}
+	if err := prov.populateUserCache(); err != nil {
+		if ctx.Debug {
+			fmt.Fprintf(os.Stderr, "[DEBUG] Failed to populate user cache on init: %v\n", err)
+		}
+	}
+
 	return prov, nil
 }
 
@@ -43,6 +51,6 @@ func (p *Provider) Capabilities() provider.Capabilities {
 		CanPostFile:     true,
 		CanUseIconEmoji: true,
 		CanExportLogs:   true,
-		CanPostBlocks:   true, // New: Slack supports posting Block Kit messages
+		CanPostBlocks:   true,
 	}
 }

@@ -24,7 +24,7 @@ func TestPost_FromArgument(t *testing.T) {
 	}
 
 	// Check if the test provider's PostMessage was called with the correct options
-	expectedLog := fmt.Sprintf("PostMessage called with opts: {TargetChannel:%s Text:%s OverrideUsername: IconEmoji: Blocks:}", "#test-channel", message)
+	expectedLog := fmt.Sprintf("PostMessage called with opts: {TargetChannel: TargetUserID: Text:%s OverrideUsername: IconEmoji: Blocks:}", message)
 	if !strings.Contains(stderr, expectedLog) {
 		t.Errorf("Expected stderr to contain '%s', got: '%s'", expectedLog, stderr)
 	}
@@ -56,7 +56,7 @@ func TestPost_FromFile(t *testing.T) {
 	}
 
 	// Check if the test provider's PostMessage was called with the correct options
-	expectedLog := fmt.Sprintf("PostMessage called with opts: {TargetChannel:%s Text:%s OverrideUsername: IconEmoji: Blocks:}", "#test-channel", message)
+	expectedLog := fmt.Sprintf("PostMessage called with opts: {TargetChannel: TargetUserID: Text:%s OverrideUsername: IconEmoji: Blocks:}", message)
 	if !strings.Contains(stderr, expectedLog) {
 		t.Errorf("Expected stderr to contain '%s', got: '%s'", expectedLog, stderr)
 	}
@@ -87,7 +87,7 @@ func TestPost_FromStdin(t *testing.T) {
 	}
 
 	// Check if the test provider's PostMessage was called with the correct options
-	expectedLog := fmt.Sprintf("PostMessage called with opts: {TargetChannel:%s Text:%s OverrideUsername: IconEmoji: Blocks:}", "#test-channel", message)
+	expectedLog := fmt.Sprintf("PostMessage called with opts: {TargetChannel: TargetUserID: Text:%s OverrideUsername: IconEmoji: Blocks:}", message)
 	if !strings.Contains(stderr, expectedLog) {
 		t.Errorf("Expected stderr to contain '%s', got: '%s'", expectedLog, stderr)
 	}
@@ -116,9 +116,50 @@ func TestPost_WithOptions(t *testing.T) {
 	}
 
 	// Check if the test provider's PostMessage was called with the correct options
-	expectedLog := fmt.Sprintf("PostMessage called with opts: {TargetChannel:%s Text:%s OverrideUsername:%s IconEmoji:%s Blocks:}", channel, message, username, iconEmoji)
+	expectedLog := fmt.Sprintf("PostMessage called with opts: {TargetChannel:%s TargetUserID:%s Text:%s OverrideUsername:%s IconEmoji:%s Blocks:}", channel, "", message, username, iconEmoji)
 	if !strings.Contains(stderr, expectedLog) {
 		t.Errorf("Expected stderr to contain '%s', got: '%s'", expectedLog, stderr)
+	}
+}
+
+func TestPost_ToUser(t *testing.T) {
+	configPath, cleanup := setupTest(t)
+	defer cleanup()
+
+	rootCmd := newRootCmd()
+	rootCmd.AddCommand(newPostCmd())
+
+	// Execute the command with options
+	message := "hello to user"
+	user := "U123ABCDE"
+	_, stderr, err := testExecuteCommandAndCapture(rootCmd, "--config", configPath, "post", "--user", user, message)
+	if err != nil {
+		t.Fatalf("testExecuteCommandAndCapture returned an error: %v\nStderr: %s", err, stderr)
+	}
+
+	// Check if the test provider's PostMessage was called with the correct options
+	expectedLog := fmt.Sprintf("PostMessage called with opts: {TargetChannel: TargetUserID:%s Text:%s OverrideUsername: IconEmoji: Blocks:}", user, message)
+	if !strings.Contains(stderr, expectedLog) {
+		t.Errorf("Expected stderr to contain '%s', got: '%s'", expectedLog, stderr)
+	}
+}
+
+func TestPost_UserAndChannelError(t *testing.T) {
+	configPath, cleanup := setupTest(t)
+	defer cleanup()
+
+	rootCmd := newRootCmd()
+	rootCmd.AddCommand(newPostCmd())
+
+	// Execute the command with both --user and --channel
+	_, _, err := testExecuteCommandAndCapture(rootCmd, "--config", configPath, "post", "--user", "U123ABCDE", "--channel", "#test", "test")
+	if err == nil {
+		t.Fatal("Expected an error, but got nil")
+	}
+
+	expectedError := "cannot use --user and --channel flags simultaneously"
+	if !strings.Contains(err.Error(), expectedError) {
+		t.Errorf("Expected error to contain '%s', got: '%s'", expectedError, err.Error())
 	}
 }
 
@@ -191,7 +232,7 @@ func TestPost_Stream(t *testing.T) {
 	wg.Wait()
 
 	// Check if the test provider's PostMessage was called with the correct, combined text.
-	expectedLog := "TargetChannel:#test-channel Text:line 1\nline 2"
+	expectedLog := "TargetUserID: Text:line 1\nline 2"
 	if !strings.Contains(stderr, expectedLog) {
 		t.Errorf("Expected stderr to contain '%s', got: '%s'", expectedLog, stderr)
 	}
@@ -211,7 +252,7 @@ func TestPost_BlockKitFormat_FromArgument(t *testing.T) {
 		t.Fatalf("testExecuteCommandAndCapture returned an error: %v\nStderr: %s", err, stderr)
 	}
 
-	expectedLog := fmt.Sprintf("PostMessage called with opts: {TargetChannel:%s Text: OverrideUsername: IconEmoji: Blocks:%s}", "#test-channel", blockKitJSON)
+	expectedLog := fmt.Sprintf("PostMessage called with opts: {TargetChannel: TargetUserID: Text: OverrideUsername: IconEmoji: Blocks:%s}", blockKitJSON)
 	if !strings.Contains(stderr, expectedLog) {
 		t.Errorf("Expected stderr to contain '%s', got: '%s'", expectedLog, stderr)
 	}
@@ -240,7 +281,7 @@ func TestPost_BlockKitFormat_FromFile(t *testing.T) {
 		t.Fatalf("testExecuteCommandAndCapture returned an error: %v\nStderr: %s", err, stderr)
 	}
 
-	expectedLog := fmt.Sprintf("PostMessage called with opts: {TargetChannel:%s Text: OverrideUsername: IconEmoji: Blocks:%s}", "#test-channel", blockKitJSON)
+	expectedLog := fmt.Sprintf("PostMessage called with opts: {TargetChannel: TargetUserID: Text: OverrideUsername: IconEmoji: Blocks:%s}", blockKitJSON)
 	if !strings.Contains(stderr, expectedLog) {
 		t.Errorf("Expected stderr to contain '%s', got: '%s'", expectedLog, stderr)
 	}
@@ -268,7 +309,7 @@ func TestPost_BlockKitFormat_FromStdin(t *testing.T) {
 		t.Fatalf("testExecuteCommandAndCapture returned an error: %v\nStderr: %s", err, stderr)
 	}
 
-	expectedLog := fmt.Sprintf("PostMessage called with opts: {TargetChannel:%s Text: OverrideUsername: IconEmoji: Blocks:%s}", "#test-channel", blockKitJSON)
+	expectedLog := fmt.Sprintf("PostMessage called with opts: {TargetChannel: TargetUserID: Text: OverrideUsername: IconEmoji: Blocks:%s}", blockKitJSON)
 	if !strings.Contains(stderr, expectedLog) {
 		t.Errorf("Expected stderr to contain '%s', got: '%s'", expectedLog, stderr)
 	}
