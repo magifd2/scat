@@ -14,6 +14,28 @@ To use `scat` with the Slack provider, you need to create a Slack App and get a 
 
 4.  Enter an app name (e.g., `My Scat Bot`), select the workspace you want to install it to, and click **"Create App"**.
 
+**Note:** The app icon and description suggestions provided below are optional. You are free to use your own preferred icon and descriptions. This documentation serves as a reference if you need guidance.
+
+### Display Information
+
+Please set the following descriptions in the "Display Information" section of your Slack app.
+
+#### Short description
+
+CLI tool to streamline Slack operations: post messages, export logs, manage channels.
+
+#### Long description
+
+Scat is a powerful Command Line Interface (CLI) tool designed to enhance your interaction with Slack. It enables users to efficiently perform various Slack operations directly from their terminal, including posting messages, retrieving channel lists, exporting logs, uploading files, and managing profiles. Built for developers and power users, Scat helps automate tasks through scripting and simplifies daily workflows.
+
+---
+
+### App Icon
+
+You can use the provided `scat_icon.png` located in the `docs/` directory as the app icon for your Slack application.
+
+---
+
 ### Step 2: Add Permissions (Scopes)
 
 Once you are on the app's management screen, you need to add the permissions that `scat` requires.
