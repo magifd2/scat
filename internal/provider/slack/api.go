@@ -20,6 +20,7 @@ const (
 	conversationsListURL      = "https://slack.com/api/conversations.list"
 	conversationsJoinURL      = "https://slack.com/api/conversations.join"
 	conversationsHistoryURL   = "https://slack.com/api/conversations.history"
+	conversationsRepliesURL   = "https://slack.com/api/conversations.replies"
 	conversationsOpenURL      = "https://slack.com/api/conversations.open"
 	usersListURL              = "https://slack.com/api/users.list"
 	usersInfoURL              = "https://slack.com/api/users.info"
@@ -321,3 +322,25 @@ func (p *Provider) sendRequest(method, url string, body io.Reader, contentType s
 
 	return bodyBytes, nil
 }
+
+func (p *Provider) getConversationReplies(channelID, ts, cursor string) (*conversationsHistoryResponse, error) {
+	params := url.Values{}
+	params.Add("channel", channelID)
+	params.Add("ts", ts)
+	if cursor != "" {
+		params.Add("cursor", cursor)
+	}
+	params.Add("limit", "200")
+
+	respBody, err := p.sendRequest("GET", conversationsRepliesURL+"?"+params.Encode(), nil, "")
+	if err != nil {
+		return nil, fmt.Errorf("failed to call conversations.replies: %w", err)
+	}
+
+	var slackResp conversationsHistoryResponse
+	if err := json.Unmarshal(respBody, &slackResp); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal conversations.replies response: %w", err)
+	}
+	return &slackResp, nil
+}
+

@@ -176,9 +176,13 @@ func saveExportedLog(log *export.ExportedLog, outputFile, format string) error {
 		content.WriteString(fmt.Sprintf("# Log export for channel %s on %s\n", log.ChannelName, log.ExportTimestamp))
 		for _, msg := range log.Messages {
 			content.WriteString("---\n")
-			content.WriteString(fmt.Sprintf("[%s] %s: %s\n", msg.Timestamp, msg.UserName, msg.Text))
+			indent := ""
+			if msg.IsReply {
+				indent = "    " // 4 spaces for indentation
+			}
+			content.WriteString(fmt.Sprintf("%s[%s] %s: %s\n", indent, msg.Timestamp, msg.UserName, msg.Text))
 			for _, file := range msg.Files {
-				content.WriteString(fmt.Sprintf("  - Attachment: %s (saved to: %s)\n", file.Name, file.LocalPath))
+				content.WriteString(fmt.Sprintf("%s  - Attachment: %s (saved to: %s)\n", indent, file.Name, file.LocalPath))
 			}
 		}
 		_, err := writer.Write([]byte(content.String()))

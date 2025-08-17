@@ -46,14 +46,16 @@ type conversationsHistoryResponse struct {
 
 // message represents a single message object from the Slack API.
 type message struct {
-	Type      string `json:"type"`
-	Timestamp string `json:"ts"`
-	UserID    string `json:"user"`
-	Text      string `json:"text"`
-	Files     []file `json:"files,omitempty"`
-	SubType   string `json:"subtype,omitempty"`
-	Username  string `json:"username,omitempty"`
-	BotID     string `json:"bot_id,omitempty"`
+	Type            string `json:"type"`
+	Timestamp       string `json:"ts"`
+	UserID          string `json:"user"`
+	Text            string `json:"text"`
+	Files           []file `json:"files,omitempty"`
+	SubType         string `json:"subtype,omitempty"`
+	Username        string `json:"username,omitempty"`
+	BotID           string `json:"bot_id,omitempty"`
+	ThreadTimestamp string `json:"thread_ts,omitempty"`
+	ReplyCount      int    `json:"reply_count,omitempty"`
 }
 
 // file represents a file object from the Slack API.

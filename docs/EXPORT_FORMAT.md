@@ -19,6 +19,8 @@ The `scat export log` command outputs channel message history in a structured JS
   - `name` (string): The original name of the file.
   - `mimetype` (string): The MIME type of the file (e.g., `image/jpeg`, `text/plain`).
   - `local_path` (string, optional): The local path where the file was downloaded, if `--output-files` was specified during export.
+- `thread_timestamp_unix` (string, optional): If the message is a reply, this is the Unix timestamp of the parent message in the thread.
+- `is_reply` (bool): `true` if the message is a reply within a thread, otherwise `false`.
 
 ## Example JSON Output
 

@@ -100,7 +100,7 @@ Here are some common ways to use `scat`.
 
 ### Exporting Channel Logs (`export log`)
 
-Exports message history from a channel to a structured JSON file or stdout. For details on the output format, including fields like `user_id`, `user_name`, and `post_type`, please refer to the [Export Data Format documentation](./docs/EXPORT_FORMAT.md).
+Exports message history from a channel to a structured JSON file or stdout. It fetches all messages, including replies in threads. For details on the output format, including fields like `user_id`, `user_name`, and `post_type`, please refer to the [Export Data Format documentation](./docs/EXPORT_FORMAT.md).
 
 -   **Export to stdout and pipe to `jq`**:
     `scat export log --channel "#random" | jq .`
