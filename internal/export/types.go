@@ -9,13 +9,15 @@ type ExportedLog struct {
 
 // ExportedMessage represents a single message in the exported log.
 type ExportedMessage struct {
-	UserID        string         `json:"user_id"`
-	UserName      string         `json:"user_name,omitempty"`
-	PostType      string         `json:"post_type,omitempty"` // "user" or "bot"
-	Timestamp     string         `json:"timestamp"`
-	TimestampUnix string         `json:"timestamp_unix"`
-	Text          string         `json:"text"`
-	Files         []ExportedFile `json:"files,omitempty"`
+	UserID              string         `json:"user_id"`
+	UserName            string         `json:"user_name,omitempty"`
+	PostType            string         `json:"post_type,omitempty"` // "user" or "bot"
+	Timestamp           string         `json:"timestamp"`
+	TimestampUnix       string         `json:"timestamp_unix"`
+	Text                string         `json:"text"`
+	Files               []ExportedFile `json:"files,omitempty"`
+	ThreadTimestampUnix string         `json:"thread_timestamp_unix,omitempty"`
+	IsReply             bool           `json:"is_reply"`
 }
 
 // ExportedFile represents a file attached to a message in the exported log.
