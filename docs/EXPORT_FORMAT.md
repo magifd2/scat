@@ -24,6 +24,8 @@ The `scat export log` command outputs channel message history in a structured JS
 
 ## Example JSON Output
 
+This example includes a regular message, a message with a file, a message that starts a thread, and a reply to that thread.
+
 ```json
 {
   "export_timestamp": "2025-08-15T11:03:53Z",
@@ -36,7 +38,8 @@ The `scat export log` command outputs channel message history in a structured JS
       "timestamp": "2025-08-14T10:00:00Z",
       "timestamp_unix": "1755168000.000000",
       "text": "Hello, world!",
-      "files": []
+      "files": [],
+      "is_reply": false
     },
     {
       "user_id": "B012345DEF",
@@ -52,7 +55,29 @@ The `scat export log` command outputs channel message history in a structured JS
           "mimetype": "application/pdf",
           "local_path": "./scat-export-example-channel-20250815T110353Z/F98765XYZ_report.pdf"
         }
-      ]
+      ],
+      "is_reply": false
+    },
+    {
+      "user_id": "U67890GHI",
+      "user_name": "Jane Smith",
+      "post_type": "user",
+      "timestamp": "2025-08-14T10:10:00Z",
+      "timestamp_unix": "1755168600.000000",
+      "text": "Let's start a thread here. This is the parent message.",
+      "files": [],
+      "is_reply": false
+    },
+    {
+      "user_id": "U12345ABC",
+      "user_name": "John Doe",
+      "post_type": "user",
+      "timestamp": "2025-08-14T10:12:00Z",
+      "timestamp_unix": "1755168720.000000",
+      "text": "This is a reply to Jane's message.",
+      "files": [],
+      "thread_timestamp_unix": "1755168600.000000",
+      "is_reply": true
     }
   ]
 }
