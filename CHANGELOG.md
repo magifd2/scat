@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.0] - 2025-08-17
+
+### Features
+
+- **Thread Export Support**: The `export log` command now correctly fetches and exports threaded conversations.
+  - It retrieves all replies for each thread.
+  - The exported message format now includes `is_reply` and `thread_timestamp_unix` fields to represent thread relationships.
+  - The plain text output format now indents replies for better readability.
+
 ## [1.8.0] - 2025-08-16
 
 ### Features
