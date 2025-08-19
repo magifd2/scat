@@ -22,12 +22,22 @@ const (
 	conversationsHistoryURL   = "https://slack.com/api/conversations.history"
 	conversationsRepliesURL   = "https://slack.com/api/conversations.replies"
 	conversationsOpenURL      = "https://slack.com/api/conversations.open"
+	conversationsCreateURL    = "https://slack.com/api/conversations.create"
 	usersListURL              = "https://slack.com/api/users.list"
 	usersInfoURL              = "https://slack.com/api/users.info"
 )
 
 // conversationsOpenResponse defines the structure for the conversations.open API response.
 type conversationsOpenResponse struct {
+	Ok      bool   `json:"ok"`
+	Error   string `json:"error"`
+	Channel struct {
+		ID string `json:"id"`
+	} `json:"channel"`
+}
+
+// conversationsCreateResponse defines the structure for the conversations.create API response.
+type conversationsCreateResponse struct {
 	Ok      bool   `json:"ok"`
 	Error   string `json:"error"`
 	Channel struct {
@@ -79,6 +89,34 @@ func (p *Provider) openDMChannel(userID string) (string, error) {
 	}
 
 	return openResp.Channel.ID, nil
+}
+
+// createConversation creates a new channel and returns the channel ID.
+func (p *Provider) createConversation(channelName string) (string, error) {
+	payload := map[string]string{"name": channelName}
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal conversations.create payload: %w", err)
+	}
+
+	respBody, err := p.sendRequest("POST", conversationsCreateURL, bytes.NewBuffer(jsonPayload), "application/json; charset=utf-8")
+	if err != nil {
+		return "", err
+	}
+
+	var createResp conversationsCreateResponse
+	if err := json.Unmarshal(respBody, &createResp); err != nil {
+		return "", fmt.Errorf("failed to unmarshal conversations.create response: %w", err)
+	}
+
+	if !createResp.Ok {
+		return "", fmt.Errorf("slack API error on conversations.create: %s", createResp.Error)
+	}
+	if createResp.Channel.ID == "" {
+		return "", fmt.Errorf("conversations.create did not return a channel ID")
+	}
+
+	return createResp.Channel.ID, nil
 }
 
 // getUsers fetches all non-bot, non-deleted users from the workspace.
@@ -343,4 +381,3 @@ func (p *Provider) getConversationReplies(channelID, ts, cursor string) (*conver
 	}
 	return &slackResp, nil
 }
-

@@ -32,11 +32,12 @@ func (p *Provider) Capabilities() provider.Capabilities {
 	fmt.Fprintf(os.Stderr, "[TESTPROVIDER] Capabilities called\n")
 	// Default capabilities for a test provider
 	return provider.Capabilities{
-		CanListChannels: true,
-		CanPostFile:     true,
-		CanUseIconEmoji: true,
-		CanExportLogs:   true,
-		CanPostBlocks:   true,
+		CanListChannels:  true,
+		CanPostFile:      true,
+		CanUseIconEmoji:  true,
+		CanExportLogs:    true,
+		CanPostBlocks:    true,
+		CanCreateChannel: true,
 	}
 }
 
@@ -116,4 +117,10 @@ func (p *Provider) ExportLog(opts export.Options) (*export.ExportedLog, error) {
 		ExportTimestamp: time.Now().UTC().Format(time.RFC3339),
 		Messages:        []export.ExportedMessage{message},
 	}, nil
+}
+
+// CreateChannel logs the call and returns a dummy channel ID.
+func (p *Provider) CreateChannel(channelName string) (string, error) {
+	fmt.Fprintf(os.Stderr, "[TESTPROVIDER] CreateChannel called with channelName: %s\n", channelName)
+	return "C1234567890", nil
 }

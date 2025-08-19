@@ -135,7 +135,7 @@ Exports message history from a channel to a structured JSON file or stdout. It f
 | `scat export`   | Exports data, such as channel logs.              |
 | `scat profile`  | Manages configuration profiles.                  |
 | `scat config`   | Manages the configuration file itself.           |
-| `scat channel`  | Lists channels for supported providers.          |
+| `scat channel`  | Manages channels for supported providers.        |
 
 ### `post` Command Flags
 
@@ -182,12 +182,18 @@ Exports message history from a channel to a structured JSON file or stdout. It f
 | `set`      | Set a value in the current profile.              |
 | `remove`   | Remove a profile.                                |
 
-### `config` and `channel` Subcommands
+### `channel` Subcommands
+
+| Subcommand | Description                                      |
+| ---------- | ------------------------------------------------ |
+| `list`     | Lists available channels for `slack` profiles.   |
+| `create`   | Creates a new channel for `slack` profiles.      |
+
+### `config` Subcommands
 
 | Command             | Description                                      |
 | ------------------- | ------------------------------------------------ |
 | `config init`       | Creates a new default configuration file.        |
-| `channel list`      | Lists available channels for `slack` profiles.   |
 
 ---
 

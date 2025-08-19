@@ -56,6 +56,7 @@ Slackアプリケーションのアイコンとして、`docs/` ディレクト�
     *   `users.read`: メンション名（例: `@someuser`）でのDM送信や、ログエクスポート時のユーザー名解決に必要です。
 
     **オプションスコープ（追加機能用）:**
+    *   `channels:manage`: `channel create` コマンドに必要です。
     *   `channels:read`: `channel list` コマンドに必要です。
     *   `groups:read`: プライベートチャンネルを表示するための `channel list` コマンドに必要です。
     *   `chat:write.customize`: `--username` または `--iconemoji` フラグを使用してボットの名前やアイコンを上書きしたい場合に必要です。

@@ -17,6 +17,7 @@ func newChannelCmd() *cobra.Command {
 
 	// Add subcommands
 	cmd.AddCommand(newChannelListCmd()) // from channellist.go
+	cmd.AddCommand(newChannelCreateCmd()) // from channel_create.go
 
 	return cmd
 }

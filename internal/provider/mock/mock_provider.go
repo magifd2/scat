@@ -25,11 +25,12 @@ func NewProvider(p config.Profile, ctx appcontext.Context) (provider.Interface, 
 // Capabilities returns the features supported by the mock provider.
 func (p *Provider) Capabilities() provider.Capabilities {
 	return provider.Capabilities{
-		CanListChannels: false,
-		CanPostFile:     true, // Mock can "handle" file posts
-		CanUseIconEmoji: false,
-		CanExportLogs:   true, // Mock supports exporting for testing purposes
-		CanPostBlocks:   true, // New: Mock supports posting Block Kit messages
+		CanListChannels:  false,
+		CanPostFile:      true, // Mock can "handle" file posts
+		CanUseIconEmoji:  false,
+		CanExportLogs:    true, // Mock supports exporting for testing purposes
+		CanPostBlocks:    true, // New: Mock supports posting Block Kit messages
+		CanCreateChannel: true, // Mock supports creating channels
 	}
 }
 
@@ -112,4 +113,15 @@ func (p *Provider) ExportLog(opts export.Options) (*export.ExportedLog, error) {
 			},
 		},
 	}, nil
+}
+
+// CreateChannel simulates creating a channel.
+func (p *Provider) CreateChannel(channelName string) (string, error) {
+	if channelName == "error" {
+		return "", fmt.Errorf("mock error creating channel")
+	}
+	if !p.Context.Silent {
+		fmt.Fprintf(os.Stderr, "--- [MOCK] CreateChannel called for channel %s ---", channelName)
+	}
+	return "C0MOCKCHANNEL", nil
 }

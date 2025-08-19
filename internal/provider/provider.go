@@ -4,11 +4,12 @@ import "github.com/magifd2/scat/internal/export"
 
 // Capabilities defines what features a provider supports.
 type Capabilities struct {
-	CanListChannels bool // Whether the provider can list channels.
-	CanPostFile     bool // Whether the provider can post files.
-	CanUseIconEmoji bool // Whether the provider supports custom icon emojis.
-	CanExportLogs   bool // Whether the provider can export channel logs.
-	CanPostBlocks   bool // New: Whether the provider can post Block Kit messages.
+	CanListChannels  bool // Whether the provider can list channels.
+	CanPostFile      bool // Whether the provider can post files.
+	CanUseIconEmoji  bool // Whether the provider supports custom icon emojis.
+	CanExportLogs    bool // Whether the provider can export channel logs.
+	CanPostBlocks    bool // New: Whether the provider can post Block Kit messages.
+	CanCreateChannel bool // Whether the provider can create channels.
 }
 
 // Interface defines the methods that a provider must implement.
@@ -28,4 +29,8 @@ type Interface interface {
 	// ExportLog performs the entire export operation.
 	// This should only be called if Capabilities().CanExportLogs is true.
 	ExportLog(opts export.Options) (*export.ExportedLog, error)
+
+	// CreateChannel creates a new channel.
+	// This should only be called if Capabilities().CanCreateChannel is true.
+	CreateChannel(channelName string) (string, error)
 }

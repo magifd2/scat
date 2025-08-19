@@ -1,6 +1,6 @@
 # scat: 汎用コマンドラインコンテンツ投稿ツール
 
-`scat` は、ファイルや標準入力から受け取ったコンテンツを、Slackなどの設定済み宛先に送信するための、多機能なコマンドラインインターフェースです。`slackcat` にインスパイアされていますが、より汎用的で拡張しやすいように設計されています。
+`scat` is a versatile command-line interface for sending content from files or standard input to a configured destination, such as Slack. It is inspired by `slackcat` but is designed to be more generic and extensible.
 
 ---
 
@@ -125,7 +125,7 @@ make build
 | `scat export`   | チャネルログなどのデータをエクスポートします。   |
 | `scat profile`  | 設定プロファイルを管理します。                   |
 | `scat config`   | 設定ファイル自体を管理します。                   |
-| `scat channel`  | 対応プロバイダのチャンネル一覧を表示します。     |
+| `scat channel`  | 対応プロバイダのチャンネルを管理します。         |
 
 ### `post` コマンドのフラグ
 
@@ -170,12 +170,18 @@ make build
 | `set`      | 現在のプロファイルの設定値を変更します。         |
 | `remove`   | プロファイルを削除します。                       |
 
-### `config` と `channel` のサブコマンド
+### `channel` サブコマンド
+
+| サブコマンド | 説明                                                     |
+| ---------- | -------------------------------------------------------- |
+| `list`     | `slack` プロファイルで利用可能なチャンネルを一覧表示します。|
+| `create`   | `slack` プロファイルに新しいチャンネルを作成します。       |
+
+### `config` サブコマンド
 
 | コマンド             | 説明                                           |
 | ------------------- | ---------------------------------------------- |
 | `config init`       | 新しいデフォルト設定ファイルを作成します。       |
-| `channel list`      | `slack` プロファイルで利用可能なチャンネルを一覧表示します。|
 
 ---
 

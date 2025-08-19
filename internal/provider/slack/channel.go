@@ -65,3 +65,21 @@ func (p *Provider) ListChannels() ([]string, error) {
 	}
 	return channelNames, nil
 }
+
+// CreateChannel creates a new channel.
+func (p *Provider) CreateChannel(channelName string) (string, error) {
+	channelID, err := p.createConversation(channelName)
+	if err != nil {
+		return "", err
+	}
+
+	// Repopulate the channel cache since we've made a change.
+	if err := p.populateChannelCache(); err != nil {
+		if p.Context.Debug {
+			fmt.Fprintf(os.Stderr, "[DEBUG] Failed to repopulate channel cache after creation: %v\n", err)
+		}
+		// Don't fail the whole operation if the cache refresh fails, but log it.
+	}
+
+	return channelID, nil
+}

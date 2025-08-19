@@ -309,3 +309,24 @@ func TestExportLog_WithThread(t *testing.T) {
 		t.Errorf("Expected regular message ThreadTimestampUnix to be empty, got %s", log.Messages[3].ThreadTimestampUnix)
 	}
 }
+
+func TestCreateChannel(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/conversations.create", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"ok": true, "channel": {"id": "C024BE91L", "name": "new-channel"}}`))
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	p := newTestProvider(server, "general")
+
+	channelID, err := p.CreateChannel("new-channel")
+	if err != nil {
+		t.Errorf("CreateChannel() returned an unexpected error: %v", err)
+	}
+
+	if channelID != "C024BE91L" {
+		t.Errorf("Expected channel ID C024BE91L, got %s", channelID)
+	}
+}
