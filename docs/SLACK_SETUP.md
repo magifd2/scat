@@ -61,6 +61,7 @@ Once you are on the app's management screen, you need to add the permissions tha
     *   `channels:read`: Required for the `channel list` command.
     *   `groups:read`: Required for the `channel list` command to see private channels.
     *   `chat:write.customize`: Required if you want to override the bot's name or icon using the `--username` or `--iconemoji` flags.
+    *   `usergroups:read`: Required to resolve user group names for invitations.
 
     **Export Scopes (for `export log` command):**
     *   `channels:history`: Required to read message history from public channels.

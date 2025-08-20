@@ -61,6 +61,7 @@ Slackアプリケーションのアイコンとして、`docs/` ディレクト�
     *   `channels:read`: `channel list` コマンドに必要です。
     *   `groups:read`: プライベートチャンネルを表示するための `channel list` コマンドに必要です。
     *   `chat:write.customize`: `--username` または `--iconemoji` フラグを使用してボットの名前やアイコンを上書きしたい場合に必要です。
+    *   `usergroups:read`: ユーザーグループ名を解決して招待するために必要です。
 
     **エクスポートスコープ（`export log` コマンド用）:**
     *   `channels:history`: パブリックチャンネルからメッセージ履歴を読み取るために必要です。
