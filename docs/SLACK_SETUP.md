@@ -56,7 +56,8 @@ Once you are on the app's management screen, you need to add the permissions tha
     *   `users.read`: Required to find a user by their @mention name (for DMs) and to resolve user IDs to names (for log exports).
 
     **Optional Scopes (for extra features):**
-    *   `channels:manage`: Required for the `channel create` command.
+    *   `channels:manage`: Required for the `channel create` command to create public channels.
+    *   `groups:write`: Required for the `channel create` command to create private channels.
     *   `channels:read`: Required for the `channel list` command.
     *   `groups:read`: Required for the `channel list` command to see private channels.
     *   `chat:write.customize`: Required if you want to override the bot's name or icon using the `--username` or `--iconemoji` flags.
