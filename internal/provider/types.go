@@ -56,12 +56,11 @@ type GetConversationHistoryOptions struct {
 
 // CreateChannelOptions defines the parameters for a CreateChannel call.
 type CreateChannelOptions struct {
-	Name               string
-	Description        string
-	Topic              string
-	IsPrivate          bool
-	UsersToInvite      []string
-	UserGroupsToInvite []string
+	Name        string
+	Description string
+	Topic       string
+	IsPrivate   bool
+	Invitees    []string
 }
 
 // --- Response Structs ---

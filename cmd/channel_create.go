@@ -53,14 +53,14 @@ func newChannelCreateCmd() *cobra.Command {
 			description, _ := cmd.Flags().GetString("description")
 			topic, _ := cmd.Flags().GetString("topic")
 			isPrivate, _ := cmd.Flags().GetBool("private")
-			users, _ := cmd.Flags().GetStringSlice("invite")
+			invitees, _ := cmd.Flags().GetStringSlice("invite")
 
 			opts := provider.CreateChannelOptions{
-				Name:          channelName,
-				Description:   description,
-				Topic:         topic,
-				IsPrivate:     isPrivate,
-				UsersToInvite: users,
+				Name:        channelName,
+				Description: description,
+				Topic:       topic,
+				IsPrivate:   isPrivate,
+				Invitees:    invitees,
 			}
 
 			channelID, err := p.CreateChannel(opts)
@@ -80,7 +80,7 @@ func newChannelCreateCmd() *cobra.Command {
 	cmd.Flags().String("description", "", "Set the channel description")
 	cmd.Flags().String("topic", "", "Set the channel topic")
 	cmd.Flags().Bool("private", false, "Create a private channel")
-	cmd.Flags().StringSlice("invite", []string{}, "Invite users to the channel (comma-separated list of user names)")
+	cmd.Flags().StringSlice("invite", []string{}, "Invite users or user groups to the channel (comma-separated list of names)")
 
 	return cmd
 }

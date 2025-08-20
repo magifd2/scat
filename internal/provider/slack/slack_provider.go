@@ -12,21 +12,23 @@ import (
 
 // Provider implements the provider.Interface for Slack.
 type Provider struct {
-	Profile        config.Profile
-	Context        appcontext.Context
-	httpClient     *http.Client
-	channelIDCache map[string]string
-	userIDCache    map[string]string
+	Profile          config.Profile
+	Context          appcontext.Context
+	httpClient       *http.Client
+	channelIDCache   map[string]string
+	userIDCache      map[string]string
+	userGroupIDCache map[string]string
 }
 
 // NewProvider creates a new Slack Provider.
 func NewProvider(p config.Profile, ctx appcontext.Context) (provider.Interface, error) {
 	prov := &Provider{
-		Profile:        p,
-		Context:        ctx,
-		httpClient:     &http.Client{},
-		channelIDCache: make(map[string]string),
-		userIDCache:    make(map[string]string),
+		Profile:          p,
+		Context:          ctx,
+		httpClient:       &http.Client{},
+		channelIDCache:   make(map[string]string),
+		userIDCache:      make(map[string]string),
+		userGroupIDCache: make(map[string]string),
 	}
 
 	// Best-effort attempt to populate caches on initialization.
@@ -38,6 +40,11 @@ func NewProvider(p config.Profile, ctx appcontext.Context) (provider.Interface, 
 	if err := prov.populateUserCache(); err != nil {
 		if ctx.Debug {
 			fmt.Fprintf(os.Stderr, "[DEBUG] Failed to populate user cache on init: %v\n", err)
+		}
+	}
+	if err := prov.populateUserGroupCache(); err != nil {
+		if ctx.Debug {
+			fmt.Fprintf(os.Stderr, "[DEBUG] Failed to populate user group cache on init: %v\n", err)
 		}
 	}
 

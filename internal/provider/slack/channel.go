@@ -75,27 +75,52 @@ func (p *Provider) CreateChannel(opts provider.CreateChannelOptions) (string, er
 		return "", err
 	}
 
-	// Invite users if any are specified.
-	if len(opts.UsersToInvite) > 0 {
-		var userIDs []string
-		for _, userName := range opts.UsersToInvite {
-			userID, err := p.ResolveUserID(userName)
-			if err != nil {
-				return "", fmt.Errorf("failed to resolve user ID for '%s': %w", userName, err)
+	// Invite users and members of user groups if any are specified.
+	if len(opts.Invitees) > 0 {
+		userIDsToInvite := make(map[string]struct{})
+
+		for _, invitee := range opts.Invitees {
+			// Try to resolve as a user first.
+			userID, err := p.ResolveUserID(invitee)
+			if err == nil {
+				userIDsToInvite[userID] = struct{}{}
+				continue
 			}
-			userIDs = append(userIDs, userID)
+
+			// If not a user, try to resolve as a user group.
+			userGroupID, err := p.ResolveUserGroupID(invitee)
+			if err == nil {
+				userGroupUserIDs, err := p.getUserGroupUsers(userGroupID)
+				if err != nil {
+					return "", fmt.Errorf("failed to get users for user group '%s': %w", invitee, err)
+				}
+				for _, ugUserID := range userGroupUserIDs {
+					userIDsToInvite[ugUserID] = struct{}{}
+				}
+				continue
+			}
+
+			return "", fmt.Errorf("could not resolve '%s' as a user or user group", invitee)
 		}
 
-		if err := p.inviteUsersToChannel(channelID, userIDs); err != nil {
-			return "", fmt.Errorf("failed to invite users: %w", err)
+		// Convert map to slice for inviting.
+		var finalUserIDs []string
+		for id := range userIDsToInvite {
+			finalUserIDs = append(finalUserIDs, id)
+		}
+
+		if len(finalUserIDs) > 0 {
+			if err := p.inviteUsersToChannel(channelID, finalUserIDs); err != nil {
+				return "", fmt.Errorf("failed to invite users: %w", err)
+			}
 		}
 	}
 
 	// Repopulate the channel cache since we've made a change.
 	if err := p.populateChannelCache(); err != nil {
-		if p.Context.Debug {
-			fmt.Fprintf(os.Stderr, "[DEBUG] Failed to repopulate channel cache after creation: %v\n", err)
-		}
+			if p.Context.Debug {
+				fmt.Fprintf(os.Stderr, "[DEBUG] Failed to repopulate channel cache after creation: %v\n", err)
+			}
 		// Don't fail the whole operation if the cache refresh fails, but log it.
 	}
 
