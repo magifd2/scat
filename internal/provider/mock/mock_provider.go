@@ -112,16 +112,17 @@ func (p *Provider) ExportLog(opts export.Options) (*export.ExportedLog, error) {
 				Text:          "Hello from mock exporter!",
 			},
 		},
-	}, nil
+	},
+nil
 }
 
 // CreateChannel simulates creating a channel.
-func (p *Provider) CreateChannel(channelName string) (string, error) {
-	if channelName == "error" {
+func (p *Provider) CreateChannel(opts provider.CreateChannelOptions) (string, error) {
+	if opts.Name == "error" {
 		return "", fmt.Errorf("mock error creating channel")
 	}
 	if !p.Context.Silent {
-		fmt.Fprintf(os.Stderr, "--- [MOCK] CreateChannel called for channel %s ---", channelName)
+		fmt.Fprintf(os.Stderr, "--- [MOCK] CreateChannel called with options: %+v ---", opts)
 	}
 	return "C0MOCKCHANNEL", nil
 }

@@ -6,6 +6,7 @@ import (
 
 	"github.com/magifd2/scat/internal/appcontext"
 	"github.com/magifd2/scat/internal/config"
+	"github.com/magifd2/scat/internal/provider"
 	"github.com/spf13/cobra"
 )
 
@@ -49,7 +50,20 @@ func newChannelCreateCmd() *cobra.Command {
 				return fmt.Errorf("the provider for profile '%s' does not support creating channels", profileName)
 			}
 
-			channelID, err := p.CreateChannel(channelName)
+			description, _ := cmd.Flags().GetString("description")
+			topic, _ := cmd.Flags().GetString("topic")
+			isPrivate, _ := cmd.Flags().GetBool("private")
+			users, _ := cmd.Flags().GetStringSlice("invite")
+
+			opts := provider.CreateChannelOptions{
+				Name:          channelName,
+				Description:   description,
+				Topic:         topic,
+				IsPrivate:     isPrivate,
+				UsersToInvite: users,
+			}
+
+			channelID, err := p.CreateChannel(opts)
 			if err != nil {
 				return fmt.Errorf("failed to create channel: %w", err)
 			}
@@ -63,5 +77,10 @@ func newChannelCreateCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringP("profile", "p", "", "Profile to use for this command")
+	cmd.Flags().String("description", "", "Set the channel description")
+	cmd.Flags().String("topic", "", "Set the channel topic")
+	cmd.Flags().Bool("private", false, "Create a private channel")
+	cmd.Flags().StringSlice("invite", []string{}, "Invite users to the channel (comma-separated list of user names)")
+
 	return cmd
 }

@@ -32,5 +32,5 @@ type Interface interface {
 
 	// CreateChannel creates a new channel.
 	// This should only be called if Capabilities().CanCreateChannel is true.
-	CreateChannel(channelName string) (string, error)
+	CreateChannel(opts CreateChannelOptions) (string, error)
 }

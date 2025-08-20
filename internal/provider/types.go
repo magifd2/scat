@@ -54,6 +54,16 @@ type GetConversationHistoryOptions struct {
 	Cursor      string // Optional
 }
 
+// CreateChannelOptions defines the parameters for a CreateChannel call.
+type CreateChannelOptions struct {
+	Name               string
+	Description        string
+	Topic              string
+	IsPrivate          bool
+	UsersToInvite      []string
+	UserGroupsToInvite []string
+}
+
 // --- Response Structs ---
 
 // ConversationHistoryResponse represents the response from a conversation history API call.

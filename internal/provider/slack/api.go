@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/magifd2/scat/internal/export"
+	"github.com/magifd2/scat/internal/provider"
 )
 
 const (
@@ -23,6 +24,7 @@ const (
 	conversationsRepliesURL   = "https://slack.com/api/conversations.replies"
 	conversationsOpenURL      = "https://slack.com/api/conversations.open"
 	conversationsCreateURL    = "https://slack.com/api/conversations.create"
+	conversationsInviteURL    = "https://slack.com/api/conversations.invite"
 	usersListURL              = "https://slack.com/api/users.list"
 	usersInfoURL              = "https://slack.com/api/users.info"
 )
@@ -44,6 +46,13 @@ type conversationsCreateResponse struct {
 		ID string `json:"id"`
 	} `json:"channel"`
 }
+
+// conversationsInviteResponse defines the structure for the conversations.invite API response.
+type conversationsInviteResponse struct {
+	Ok      bool   `json:"ok"`
+	Error   string `json:"error"`
+}
+
 
 // usersListResponse defines the structure for the users.list API response.
 type usersListResponse struct {
@@ -92,8 +101,18 @@ func (p *Provider) openDMChannel(userID string) (string, error) {
 }
 
 // createConversation creates a new channel and returns the channel ID.
-func (p *Provider) createConversation(channelName string) (string, error) {
-	payload := map[string]string{"name": channelName}
+func (p *Provider) createConversation(opts provider.CreateChannelOptions) (string, error) {
+	payload := map[string]interface{}{
+		"name": opts.Name,
+		"is_private": opts.IsPrivate,
+	}
+	if opts.Description != "" {
+		payload["description"] = opts.Description
+	}
+	if opts.Topic != "" {
+		payload["topic"] = opts.Topic
+	}
+
 	jsonPayload, err := json.Marshal(payload)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal conversations.create payload: %w", err)
@@ -118,6 +137,36 @@ func (p *Provider) createConversation(channelName string) (string, error) {
 
 	return createResp.Channel.ID, nil
 }
+
+// inviteUsersToChannel invites users to a channel.
+func (p *Provider) inviteUsersToChannel(channelID string, userIDs []string) error {
+	payload := map[string]interface{}{
+		"channel": channelID,
+		"users":   strings.Join(userIDs, ","),
+	}
+
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal conversations.invite payload: %w", err)
+	}
+
+	respBody, err := p.sendRequest("POST", conversationsInviteURL, bytes.NewBuffer(jsonPayload), "application/json; charset=utf-8")
+	if err != nil {
+		return err
+	}
+
+	var inviteResp conversationsInviteResponse
+	if err := json.Unmarshal(respBody, &inviteResp); err != nil {
+		return fmt.Errorf("failed to unmarshal conversations.invite response: %w", err)
+	}
+
+	if !inviteResp.Ok {
+		return fmt.Errorf("slack API error on conversations.invite: %s", inviteResp.Error)
+	}
+
+	return nil
+}
+
 
 // getUsers fetches all non-bot, non-deleted users from the workspace.
 func (p *Provider) getUsers() ([]struct{ ID, Name string }, error) {

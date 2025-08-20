@@ -120,7 +120,7 @@ func (p *Provider) ExportLog(opts export.Options) (*export.ExportedLog, error) {
 }
 
 // CreateChannel logs the call and returns a dummy channel ID.
-func (p *Provider) CreateChannel(channelName string) (string, error) {
-	fmt.Fprintf(os.Stderr, "[TESTPROVIDER] CreateChannel called with channelName: %s\n", channelName)
+func (p *Provider) CreateChannel(opts provider.CreateChannelOptions) (string, error) {
+	fmt.Fprintf(os.Stderr, "[TESTPROVIDER] CreateChannel called with opts: %+v\n", opts)
 	return "C1234567890", nil
 }

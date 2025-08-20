@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/magifd2/scat/internal/provider"
 )
 
 // ResolveChannelID ensures a channel ID is returned for a given name.
@@ -67,10 +69,26 @@ func (p *Provider) ListChannels() ([]string, error) {
 }
 
 // CreateChannel creates a new channel.
-func (p *Provider) CreateChannel(channelName string) (string, error) {
-	channelID, err := p.createConversation(channelName)
+func (p *Provider) CreateChannel(opts provider.CreateChannelOptions) (string, error) {
+	channelID, err := p.createConversation(opts)
 	if err != nil {
 		return "", err
+	}
+
+	// Invite users if any are specified.
+	if len(opts.UsersToInvite) > 0 {
+		var userIDs []string
+		for _, userName := range opts.UsersToInvite {
+			userID, err := p.ResolveUserID(userName)
+			if err != nil {
+				return "", fmt.Errorf("failed to resolve user ID for '%s': %w", userName, err)
+			}
+			userIDs = append(userIDs, userID)
+		}
+
+		if err := p.inviteUsersToChannel(channelID, userIDs); err != nil {
+			return "", fmt.Errorf("failed to invite users: %w", err)
+		}
 	}
 
 	// Repopulate the channel cache since we've made a change.

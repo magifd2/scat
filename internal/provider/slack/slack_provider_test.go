@@ -321,7 +321,10 @@ func TestCreateChannel(t *testing.T) {
 
 	p := newTestProvider(server, "general")
 
-	channelID, err := p.CreateChannel("new-channel")
+	opts := provider.CreateChannelOptions{
+		Name: "new-channel",
+	}
+	channelID, err := p.CreateChannel(opts)
 	if err != nil {
 		t.Errorf("CreateChannel() returned an unexpected error: %v", err)
 	}

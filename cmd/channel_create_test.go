@@ -29,6 +29,19 @@ func TestChannelCreateCmd(t *testing.T) {
 			wantErr:    true,
 			wantOutput: "accepts 1 arg(s), received 0",
 		},
+		{
+			name: "success with all options",
+			args: []string{
+				"--config", configPath,
+				"channel", "create", "another-channel",
+				"--description", "A new channel",
+				"--topic", "Channel topic",
+				"--private",
+				"--invite", "user1,user2",
+			},
+			wantErr:    false,
+			wantOutput: "info: Successfully created channel with ID: C1234567890",
+		},
 	}
 
 	for _, tt := range tests {
