@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.0] - 2025-08-20
+
+### Features
+
+- **Channel Creation with User/User Group Invitation**: The `channel create` command now supports inviting users and user groups directly when creating a new channel.
+  - User and user group names (handles) are resolved to their respective IDs.
+
+### Documentation
+
+- **Updated Slack Setup Guide**: The `docs/SLACK_SETUP.md` and `docs/SLACK_SETUP.ja.md` files have been updated to include the necessary `usergroups:read` OAuth scope for inviting user groups.
+- **Updated Channel Management Development Plan**: The `docs/DEVELOPMENT_PLAN_channel_management.md` has been updated to reflect the actual implementation details of channel creation and user invitation.
+
 ## [1.9.0] - 2025-08-17
 
 ### Features
